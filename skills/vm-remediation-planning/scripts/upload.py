@@ -88,7 +88,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dashboard", help="dashboard XML to import")
-    ap.add_argument("--report", help="report XML to import")
+    ap.add_argument("--report", help="report XML to import (PDF)")
+    ap.add_argument("--csv", help="CSV report XML to import")
     ap.add_argument("--name", help="optional display-name override")
     ap.add_argument("--host")
     ap.add_argument("--port", type=int)
@@ -98,8 +99,8 @@ def main():
                     help="skip TLS verification (self-signed lab consoles only)")
     args = ap.parse_args()
 
-    if not (args.dashboard or args.report):
-        ap.error("provide --dashboard and/or --report")
+    if not (args.dashboard or args.report or args.csv):
+        ap.error("provide --dashboard, --report and/or --csv")
 
     host = args.host or os.environ.get("TSC_HOST")
     access = args.access_key or os.environ.get("TSC_ACCESS_KEY")
@@ -129,6 +130,13 @@ def main():
         name = args.name or os.path.splitext(os.path.basename(args.report))[0]
         r = import_definition(base, ctx, keyhdr, "/rest/reportDefinition/import", tok, name)
         print("  ✓ report imported:", json.dumps(r.get("response", r))[:200])
+    if args.csv:
+        # CSV reports import through the same reportDefinition endpoint; the
+        # report type/styleFamily inside the XML drives the export format.
+        tok = upload_file(base, ctx, keyhdr, args.csv)
+        name = args.name or os.path.splitext(os.path.basename(args.csv))[0]
+        r = import_definition(base, ctx, keyhdr, "/rest/reportDefinition/import", tok, name)
+        print("  ✓ csv report imported:", json.dumps(r.get("response", r))[:200])
 
 
 if __name__ == "__main__":

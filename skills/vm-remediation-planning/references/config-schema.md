@@ -20,6 +20,7 @@ optional; defaults in **bold**.
 | `detail_critical_only` | bool | **false** | Report only: limit Detailed section to Critical. |
 | `top_hosts_max` | int \| `"all"` | **20** | Report only: rows in "Most Vulnerable Hosts". `10`/`20`/`50`/`100` or `"all"`. |
 | `top_remediation_max` | int \| `"all"` | **10** | Report only: rows in "Top Remediation Opportunities". `10`/`20`/`50`/`100` or `"all"`. |
+| `csv_report` | bool | **false** | Report only: also emit a flat CSV vulnerability export (`… - Detailed Vulnerabilities.xml`, type csv/styleFamily 5) using the same detailed-remediation filters. |
 | `title_prefix` | string | **`VM Remediation Planning`** | Filename + title prefix. |
 
 ## Example
@@ -41,9 +42,11 @@ optional; defaults in **bold**.
   "detail_critical_only": false,
   "top_hosts_max": 20,
   "top_remediation_max": 10,
+  "csv_report": true,
   "title_prefix": "VM Remediation Planning"
 }
 ```
 
-Produces `VM Remediation Planning - Dashboard.xml` and
-`VM Remediation Planning - Report.xml`.
+Produces `VM Remediation Planning - Dashboard.xml`,
+`VM Remediation Planning - Report.xml`, and (when `csv_report` is true)
+`VM Remediation Planning - Detailed Vulnerabilities.xml`.

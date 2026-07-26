@@ -14,5 +14,6 @@
   "detail_critical_only": false,
   "top_hosts_max": 20,
   "top_remediation_max": 10,
+  "csv_report": false,
   "title_prefix": "VM Remediation Planning"
 }

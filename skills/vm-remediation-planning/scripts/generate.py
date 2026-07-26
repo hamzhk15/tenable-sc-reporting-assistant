@@ -33,6 +33,7 @@ Config schema (all keys optional unless noted; sane defaults applied):
     "detail_critical_only": false,                   # report only
     "top_hosts_max": 20 | "all",                     # report only
     "top_remediation_max": 10 | "all",               # report only
+    "csv_report": false,                             # report only: also emit CSV
     "title_prefix": "VM Remediation Planning"
   }
 """
@@ -114,6 +115,9 @@ def normalize(raw):
     cfg["detail_critical_only"] = bool(raw.get("detail_critical_only", False))
     # Report-only record counts. Each accepts 10/20/50/100 or "all"; "all" is
     # stored as a large cap plus an "All" display label used in the title.
+    # Additional CSV report: a flat, filtered vulnerability export alongside the
+    # PDF, using the same detailed-remediation filters.
+    cfg["csv_report"] = bool(raw.get("csv_report", False))
     cfg["detail_enabled"] = bool(raw.get("detail_enabled", True))
     cfg["detail_max"], cfg["detail_max_label"] = _count(raw.get("detail_max"), 50)
     cfg["top_hosts_max"], cfg["top_hosts_label"] = _count(
@@ -257,6 +261,9 @@ def interview():
         raw["top_remediation_max"] = _ask(
             "[11] Top Remediation Opportunities: how many? "
             "10 / 20 / 50 / 100 / all", "10").lower()
+        raw["csv_report"] = _ask_yn(
+            "[12] Also generate a CSV vulnerability export (same detail "
+            "filters)?", False)
     return raw
 
 
@@ -286,6 +293,19 @@ def generate(cfg, out_dir):
             "Vulnerability Management and Remediation Planning report. "
             "Scope: %s." % cfg["scope_label"], chaps)
         written.append((fname, len(chaps), "report"))
+
+        # Optional companion CSV export, using the same detailed-remediation
+        # filters the user chose (severities + exploitable/critical scoping).
+        if cfg.get("csv_report"):
+            csv_flt = sc_report.detail_filters(cfg, gf)
+            cfname = os.path.join(out_dir, "%s - Detailed Vulnerabilities.xml"
+                                  % prefix)
+            sc_report.write_csv_report(
+                cfname,
+                "%s: Detailed Vulnerabilities List" % prefix,
+                "Filtered vulnerability export (CSV). Scope: %s."
+                % cfg["scope_label"], csv_flt)
+            written.append((cfname, len(sc_report.CSV_COLUMNS), "csv"))
 
     return written
 
@@ -336,8 +356,10 @@ def main():
     written = generate(cfg, args.out_dir)
 
     print("\nScope: %s" % cfg["scope_label"])
+    unit_by_kind = {"dashboard": "components", "report": "chapters",
+                    "csv": "columns"}
     for fname, n, kind in written:
-        unit = "components" if kind == "dashboard" else "chapters"
+        unit = unit_by_kind.get(kind, "items")
         print("  ✓ %-9s %2d %-11s -> %s" % (kind, n, unit, fname))
     print("\nImport in SC:")
     print("  Dashboard  -> Dashboard > Options > Add Dashboard > Import")

@@ -39,6 +39,10 @@ iterates either:
   details; or
 - **by host** — each host → its remediations + its vulnerabilities.
 
+Optionally, a companion **CSV report** (`<report>`, type csv, styleFamily 5): a
+flat, analysis-ready vulnerability export (list-style `vulndetails`, ~37
+columns) using the same detailed-remediation filters chosen for the PDF.
+
 ## How to use this skill
 
 ### Step 1 — Interview the user
@@ -78,6 +82,9 @@ Every answer maps to a key in the config JSON (see `references/config-schema.md`
    - **Detailed section: critical vulns only?** → `detail_critical_only`
 10. *(Report only)* **Most Vulnerable Hosts — how many: 10 / 20 / 50 / 100 / all?** → `top_hosts_max`
 11. *(Report only)* **Top Remediation Opportunities — how many: 10 / 20 / 50 / 100 / all?** → `top_remediation_max`
+12. *(Report only)* **Also generate a CSV vulnerability export?** → `csv_report`
+    (A flat, filtered vulnerability list alongside the PDF, using the same
+    detailed-remediation filters.)
 
 If the user wants to filter by repository or asset group but doesn't know the
 IDs, offer to list them from their console (requires the SC URL + API keys):
@@ -128,6 +135,7 @@ deliver a file that fails validation.**
 ```bash
 export TSC_HOST=sc.example.com TSC_ACCESS_KEY=... TSC_SECRET_KEY=...
 python3 upload.py --dashboard "…- Dashboard.xml" --report "…- Report.xml"
+# add --csv "…- Detailed Vulnerabilities.xml" to import the CSV export too
 ```
 
 ### Step 5 — Tell the user about first-load "No Data" widgets

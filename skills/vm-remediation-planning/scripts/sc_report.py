@@ -58,6 +58,22 @@ def sla_days(cfg, sev_code):
     sla = cfg.get("sla") or {}
     return sla.get(SEV_LABEL[sev_code].lower(), DEFAULT_SLA.get(sev_code))
 
+
+def detail_filters(cfg, gf):
+    """Filters for the Detailed Remediation section (shared PDF chapter + CSV).
+
+    Starts from the tracked severities under the global filter, then applies the
+    same exploitable-only / critical-only scoping the user chose for the report.
+    """
+    sev_csv = ",".join(cfg["severities"])
+    filters = gf([flt("severity", sev_csv)])
+    if cfg.get("detail_exploitable_only"):
+        filters = filters + [flt("exploitAvailable", "true")]
+    if cfg.get("detail_critical_only"):
+        filters = [f for f in filters if f["filterName"] != "severity"]
+        filters = filters + [flt("severity", CRIT)]
+    return filters
+
 # ---------------------------------------------------------------------------
 # location ids -- SC uses short, per-element opaque strings. They need only be
 # present; we generate stable sequential ones.
@@ -266,18 +282,14 @@ def chapter(name, groups):
 # ---------------------------------------------------------------------------
 # Report XML assembly
 # ---------------------------------------------------------------------------
-def write_report(filename, name, description, chapters):
-    definition = {
-        "chapters": {i: c for i, c in enumerate(chapters)},
-        "coverPage": {}, "paper": {}, "tableOfContents": {},
-        "footer": {}, "header": {},
-    }
+def _write_report_xml(filename, name, description, definition,
+                      rtype="pdf", style_family="1"):
     p = ['<?xml version="1.0" encoding="UTF-8"?>', "<report>",
          "\t<scVersion>6.6.0</scVersion>",
          "\t<name>%s</name>" % escape(name),
          "\t<description>%s</description>" % escape(description),
-         "\t<type>pdf</type>",
-         "\t<styleFamily>1</styleFamily>",
+         "\t<type>%s</type>" % rtype,
+         "\t<styleFamily>%s</styleFamily>" % style_family,
          "\t<attributeSetID>-1</attributeSetID>",
          "\t<schedule>", "\t\t<type>template</type>",
          "\t\t<start></start>", "\t\t<repeatRule></repeatRule>",
@@ -287,6 +299,57 @@ def write_report(filename, name, description, chapters):
     with open(filename, "w", encoding="utf-8") as f:
         f.write("\n".join(p))
     return filename
+
+
+def write_report(filename, name, description, chapters):
+    definition = {
+        "chapters": {i: c for i, c in enumerate(chapters)},
+        "coverPage": {}, "paper": {}, "tableOfContents": {},
+        "footer": {}, "header": {},
+    }
+    return _write_report_xml(filename, name, description, definition,
+                             rtype="pdf", style_family="1")
+
+
+# ---------------------------------------------------------------------------
+# CSV report -- a flat, filtered vulnerability export (type=csv, styleFamily=5).
+# Definition is a single list-style vulndetails data source plus a column set;
+# there are no chapters. Column set mirrors Tenable's shipped "Detailed
+# Vulnerabilities List" so the export is analysis-ready.
+# ---------------------------------------------------------------------------
+CSV_COLUMNS = [
+    "pluginID", "pluginName", "familyID", "severity", "ip", "protocol", "port",
+    "exploitAvailable", "repositoryID", "dnsName", "netbiosName", "macAddress",
+    "synopsis", "description", "solution", "seeAlso", "riskFactor", "vprScore",
+    "epssScore", "baseScore", "cvssV3BaseScore", "cvssVector", "cvssV3Vector",
+    "cpe", "cve", "bid", "xref", "firstSeen", "lastSeen", "vulnPubDate",
+    "patchPubDate", "pluginPubDate", "pluginModDate", "exploitEase",
+    "exploitFrameworks", "checkType", "version",
+]
+
+
+def write_csv_report(filename, name, description, filters,
+                     sort_col="pluginID", sort_dir="desc"):
+    definition = {
+        "dataSource": {
+            "querySourceType": "cumulative", "querySourceID": "",
+            "querySourceView": "", "sortColumn": sort_col,
+            "sortDirection": sort_dir, "iteratorID": "-1",
+            "resultStyle": "list",
+            "query": {
+                "name": "", "description": "", "tool": "vulndetails",
+                "type": "vuln", "tags": "", "context": "report",
+                "browseColumns": "", "browseSortColumn": "",
+                "browseSortDirection": "ASC", "ownerGID": "0",
+                "targetGID": "-1",
+                "filters": {i: f for i, f in enumerate(filters)}, "groups": {},
+            },
+        },
+        "columns": {i: {"name": c} for i, c in enumerate(CSV_COLUMNS)},
+        "dataPoints": "2147483647",
+    }
+    return _write_report_xml(filename, name, description, definition,
+                             rtype="csv", style_family="5")
 
 
 # ---------------------------------------------------------------------------
@@ -439,24 +502,19 @@ def build_chapters(cfg, gf):
         return chapters
 
     detail_max = cfg.get("detail_max", 50)
-    detail_filters = gf([flt("severity", sev_csv)])
-    if cfg.get("detail_exploitable_only"):
-        detail_filters = detail_filters + [flt("exploitAvailable", "true")]
-    if cfg.get("detail_critical_only"):
-        detail_filters = [f for f in detail_filters if f["filterName"] != "severity"]
-        detail_filters = detail_filters + [flt("severity", CRIT)]
+    detail_flt = detail_filters(cfg, gf)
 
     if cfg["group_remediation_by"] == "vulnerability":
         # One block per vulnerability: the hosts it affects + its full details.
         it = iterator(
-            "Per-Vulnerability Detail", "sumid", detail_filters,
+            "Per-Vulnerability Detail", "sumid", detail_flt,
             child_components=[
                 paragraph("4.2.2", "Hosts affected by this vulnerability:"),
                 table_component("Affected Hosts", _HOST_COLS, "sumip",
-                                detail_filters, data_points=100),
+                                detail_flt, data_points=100),
                 paragraph("4.2.3", "Vulnerability details and remediation:"),
                 table_component("Vulnerability Details", _VULN_COLS,
-                                "vulndetails", detail_filters, data_points=100,
+                                "vulndetails", detail_flt, data_points=100,
                                 sort_col="severity", sort_dir="desc"),
             ],
             data_points=detail_max,
@@ -477,16 +535,16 @@ def build_chapters(cfg, gf):
         ]))
     else:  # group by host
         it = iterator(
-            "Per-Host Detail", "sumip", detail_filters,
+            "Per-Host Detail", "sumip", detail_flt,
             child_components=[
                 paragraph("4.2.2", "Remediations needed on this host:"),
                 table_component("Host Remediations", _REMEDIATION_COLS,
-                                "sumremediation", detail_filters,
+                                "sumremediation", detail_flt,
                                 data_points=100, sort_col="scorePctg",
                                 sort_dir="desc"),
                 paragraph("4.2.3", "Vulnerabilities on this host:"),
                 table_component("Host Vulnerabilities", _VULN_COLS,
-                                "vulndetails", detail_filters, data_points=100,
+                                "vulndetails", detail_flt, data_points=100,
                                 sort_col="severity", sort_dir="desc"),
             ],
             data_points=detail_max,

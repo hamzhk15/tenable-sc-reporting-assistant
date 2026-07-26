@@ -25,11 +25,16 @@ via API keys, talking directly to the SC REST API (no third-party dependencies).
   **by vulnerability** (each vuln → affected hosts + remediation details) or
   **by host** (each host → its remediations + its vulns)
 
+**CSV export** (optional) — a flat, analysis-ready vulnerability list (CSV
+report, ~37 columns) generated alongside the PDF using the same
+detailed-remediation filters.
+
 The generator asks about artifact type, active-vs-all data, data freshness,
 severities, SLAs, remediation grouping, repository filter, asset-group filter,
 and (for reports) whether to include the Detailed Remediation section, the
 record counts for the detailed / most-vulnerable-hosts / top-remediation
-sections, and exploitable-only / critical-only detail scoping.
+sections, exploitable-only / critical-only detail scoping, and whether to also
+emit the CSV export.
 
 ## Repository layout
 
@@ -70,6 +75,7 @@ python3 validate.py ./out/*.xml
 # optional: upload straight into a console via the SC REST API
 export TSC_HOST=sc.example.com TSC_ACCESS_KEY=... TSC_SECRET_KEY=...
 python3 upload.py --dashboard "./out/VM Remediation Planning - Dashboard.xml"
+# add --report / --csv to import the PDF report and CSV export too
 # add --insecure for self-signed lab consoles
 ```
 
