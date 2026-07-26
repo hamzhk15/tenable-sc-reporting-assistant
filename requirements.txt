@@ -1,0 +1,3 @@
+# Generation + validation use only the Python standard library.
+# Only upload.py (importing into a live Tenable SC console) needs pyTenable:
+pytenable>=1.4.0

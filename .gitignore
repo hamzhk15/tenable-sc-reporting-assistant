@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+out/
+*.xml
+!skills/**/*.example.xml
+.DS_Store

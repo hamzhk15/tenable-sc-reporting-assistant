@@ -1,0 +1,104 @@
+---
+name: vm-remediation-planning
+description: Generate importable Tenable Security Center (Tenable SC / SecurityCenter) XML templates for a "Vulnerability Management and Remediation Planning" dashboard and/or report, then optionally upload them to a SC console via API keys. Use when a VM analyst or engineer wants to build, customize, or deploy a Tenable SC dashboard or report covering vulnerability trend, scanning history, risk by asset group or severity, top remediation opportunities, or detailed per-host / per-remediation remediation plans. Triggers on: "Tenable SC dashboard", "SecurityCenter report", "vulnerability management dashboard", "remediation planning report", "import SC template".
+---
+
+# Vulnerability Management & Remediation Planning — Tenable SC Template Generator
+
+This skill builds **importable Tenable Security Center XML** for one template
+family: **Vulnerability Management and Remediation Planning**. It produces a
+dashboard, a report, or both, and can upload them to a SC console with API keys.
+
+## What it produces
+
+**Dashboard** (`<dashboardTab>`, scVersion 6.2.0):
+1. **Vulnerability Trend Over Time** — line chart, one series per tracked severity.
+2. **Scanning History** — matrix: assets scanned (plugin 19506), vulnerabilities
+   detected (last observed), and vulnerabilities mitigated — across Last Day /
+   Week / Month / Quarter / Year.
+3. **Understanding Risk – By Asset Group** — matrix (only when the user filters
+   by 2–10 asset groups): one row per group, columns = Total Assets, Mitigated,
+   Unmitigated, Exploitable, Exploitable+Patch>30d, Hosts w/ Exploitable Patch>30d.
+4. **Understanding Risk – By Severity** — same columns, one row per tracked
+   severity plus a total row.
+5. **Understanding Risk – Remediation Opportunities** — table, top 10 solutions.
+
+**Report** (`<report>`, type pdf, scVersion 6.6.0): About; Vulnerability
+Overview (trend + severity pie); Understanding Risk (top-10 remediation + top-20
+hosts); and a **Detailed Remediation** chapter that iterates either:
+- **by remediation** — each solution → its vulnerabilities + affected hosts; or
+- **by asset** — each host → its remediations + its vulnerabilities.
+
+## How to use this skill
+
+### Step 1 — Interview the user
+
+Ask these questions (use the AskUserQuestion tool where it helps; group them).
+Every answer maps to a key in the config JSON (see `references/config-schema.md`).
+
+1. **Dashboard, report, or both?** → `artifact`
+2. **Which vulnerability data — active only, or everything?** → `vuln_data`
+   (`active` adds `pluginType=active` globally; `all` includes passive/other.)
+3. **Data freshness — Last Day / Week / Month / all data?** → `data_freshness`
+4. **Which severities to track — Critical / High / Medium / Low?** → `severities`
+   (**Never include Info** — Info findings are scan metadata, not vulnerabilities.)
+5. **SLAs defined?** If yes, days for Critical/High/Medium/Low. → `sla`
+6. **Group remediation by Assets or by Findings?** → `group_remediation_by`
+7. **Filter by repository IDs?** If yes, which. → `repository_ids`
+8. **Filter by asset group IDs?** If yes, which. → `asset_group_ids`
+   (2–10 groups enables the By-Asset-Group matrix. Ask for display names if handy.)
+9. *(Report only)* **Detailed section: exploitable vulns only?** → `detail_exploitable_only`
+10. *(Report only)* **Detailed section: critical vulns only?** → `detail_critical_only`
+
+If the user doesn't know their repository or asset-group IDs and wants to upload,
+you can look them up via the connected Tenable MCP server (or `pyTenable`) before
+generating.
+
+### Step 2 — Write the config and generate
+
+Write the answers to a `config.json` (schema in `references/config-schema.md`), then:
+
+```bash
+cd skills/vm-remediation-planning/scripts
+python3 generate.py --config /path/to/config.json --out-dir /path/to/output
+```
+
+(Or `python3 generate.py --interactive` to prompt directly.)
+
+### Step 3 — Validate (always)
+
+```bash
+python3 validate.py "/path/to/output/"*.xml
+```
+
+This catches every known import-failure class: malformed XML, PHP byte-prefix
+mismatches, invisible fg==bg colors, missing table `<schedule>`, Info-severity
+filters, and `sumip` host cells that wrongly default to `vulnCount`. **Do not
+deliver a file that fails validation.**
+
+### Step 4 — Deliver or upload
+
+- **Manual import** (default): hand the user the XML file(s). In SC:
+  - Dashboard → *Dashboard > Options > Add Dashboard > Import*
+  - Report → *Reporting > Report Templates > Options > Import*
+- **Automatic upload**: if the user provides a console URL + API keys, use
+  `upload.py` (pyTenable). Never hard-code credentials; pass them via env vars
+  or flags and confirm with the user before uploading to a live console.
+
+```bash
+export TSC_HOST=sc.example.com TSC_ACCESS_KEY=... TSC_SECRET_KEY=...
+python3 upload.py --dashboard "…- Dashboard.xml" --report "…- Report.xml"
+```
+
+## Critical correctness rules (baked into the scripts — respect them)
+
+- **Definitions are base64(PHP-serialized) with UTF-8 *byte*-length prefixes.**
+  Always generate via the scripts; never hand-edit a `<definition>`.
+- **Info (severity 0) is excluded everywhere.** It is not a vulnerability.
+- **Host counts use `sumip` + `outputText=ipCount`.** Vuln counts use `sumid`.
+- **`outputColors` is `foreground:background`.** fg==bg is invisible.
+- **Table components need a `<schedule>`; matrices embed it per cluster.**
+- Prefer structured filters (`assetID`, `repositoryIDs`, `severity`,
+  `exploitAvailable`, `patchPublished`) over keyword matching.
+
+See `references/` for the full format spec, filter/tool vocabulary, and config schema.

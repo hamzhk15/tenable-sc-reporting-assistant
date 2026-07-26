@@ -1,0 +1,14 @@
+{
+  "artifact": "both",
+  "vuln_data": "active",
+  "data_freshness": "month",
+  "severities": ["critical", "high", "medium", "low"],
+  "sla": {"critical": 7, "high": 30, "medium": 60, "low": 90},
+  "group_remediation_by": "findings",
+  "repository_ids": null,
+  "asset_group_ids": null,
+  "asset_group_labels": {},
+  "detail_exploitable_only": false,
+  "detail_critical_only": false,
+  "title_prefix": "VM Remediation Planning"
+}
