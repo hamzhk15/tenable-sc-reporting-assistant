@@ -40,6 +40,7 @@ skills/vm-remediation-planning/
     ├── sc_report.py             # report chapter/group/iterator builders
     ├── generate.py              # config → XML (CLI, --config or --interactive)
     ├── validate.py              # pre-flight import checks
+    ├── list_scope.py            # list repository & asset-group IDs from a console
     ├── upload.py                # stdlib REST import into a live console
     └── config.example.json      # sample config
 ```
@@ -48,6 +49,10 @@ skills/vm-remediation-planning/
 
 ```bash
 cd skills/vm-remediation-planning/scripts
+
+# (optional) list repository & asset-group IDs from your console to filter by
+export TSC_HOST=sc.example.com TSC_ACCESS_KEY=... TSC_SECRET_KEY=...
+python3 list_scope.py --insecure
 
 # generate from a config file …
 python3 generate.py --config config.example.json --out-dir ./out

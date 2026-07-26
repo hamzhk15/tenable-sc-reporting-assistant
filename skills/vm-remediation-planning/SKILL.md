@@ -50,13 +50,23 @@ Every answer maps to a key in the config JSON (see `references/config-schema.md`
 
 > **Never substitute placeholder IDs.** If the user says they want to filter by
 > repository or asset-group IDs, you MUST stop and collect the actual IDs before
-> generating — either by asking them, or by looking them up on the connected
-> Tenable MCP server. Generating with made-up IDs is a failed run.
+> generating — either by asking them, or by listing them from their console with
+> `list_scope.py` (below). Generating with made-up IDs is a failed run.
 9. *(Report only)* **Detailed section: exploitable vulns only?** → `detail_exploitable_only`
 10. *(Report only)* **Detailed section: critical vulns only?** → `detail_critical_only`
 
-If the user doesn't know their repository or asset-group IDs and wants to upload,
-you can look them up via the connected Tenable MCP server before generating.
+If the user wants to filter by repository or asset group but doesn't know the
+IDs, offer to list them from their console (requires the SC URL + API keys):
+
+```bash
+export TSC_HOST=sc.example.com TSC_ACCESS_KEY=... TSC_SECRET_KEY=...
+python3 list_scope.py            # both; add --repos or --asset-groups to narrow
+python3 list_scope.py --insecure # self-signed lab consoles
+```
+
+It prints each repository and asset group with its **ID** and name so the user
+can pick which IDs to put in `repository_ids` / `asset_group_ids`. In SC, an
+"asset group" is an asset list (served from `/rest/asset`).
 
 ### Step 2 — Write the config and generate
 
