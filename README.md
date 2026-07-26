@@ -21,8 +21,8 @@ via API keys, talking directly to the SC REST API (no third-party dependencies).
 **Report** (PDF template)
 - About, Vulnerability Overview (trend + severity), Understanding Risk (top-10
   remediation + top-20 hosts)
-- Detailed Remediation — grouped **by remediation** (each solution → its vulns +
-  affected hosts) or **by asset** (each host → its remediations + its vulns)
+- Detailed Remediation — grouped **by vulnerability** (each vuln → affected hosts
+  + remediation details) or **by host** (each host → its remediations + its vulns)
 
 The generator asks about artifact type, active-vs-all data, data freshness,
 severities, SLAs, remediation grouping, repository filter, asset-group filter,

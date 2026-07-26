@@ -10,7 +10,7 @@ optional; defaults in **bold**.
 | `data_freshness` | string | `day` \| `week` \| `month` \| `quarter` \| `year` \| **`all`** | Adds a global `lastSeen` window (`quarter`=90d, `year`=365d; skipped on cells that already key off `lastSeen`). |
 | `severities` | array | subset of `critical,high,medium,low`; default **all four** | Severities tracked in every widget. **Info is always dropped.** |
 | `sla` | object \| null | `{"critical":7,"high":30,"medium":60,"low":90}` | Remediation SLA days per severity. Embedded in descriptions; drives SLA labels. |
-| `group_remediation_by` | string | `assets` \| **`findings`** | Report Detailed-Remediation chapter: by host, or by remediation solution. (`findings` ≡ by remediation.) |
+| `group_remediation_by` | string | **`vulnerability`** \| `host` | Report Detailed-Remediation chapter: iterate by vulnerability (each vuln → affected hosts + details) or by host (each host → its remediations + vulns). Grouping by remediation solution is not supported by SC. Legacy `findings`/`remediation`→`vulnerability`, `assets`→`host`. |
 | `repository_ids` | array \| null | e.g. `[1,3]` | Adds global `repositoryIDs` filter. |
 | `asset_group_ids` | array \| null | e.g. `[10,11]` | Adds `assetID` scoping. **2–10 groups** enables the By-Asset-Group matrix. |
 | `asset_group_labels` | object | `{"10":"Servers"}` | Optional display names for the group rows. |
@@ -28,7 +28,7 @@ optional; defaults in **bold**.
   "data_freshness": "month",
   "severities": ["critical", "high", "medium"],
   "sla": {"critical": 7, "high": 30, "medium": 60, "low": 90},
-  "group_remediation_by": "findings",
+  "group_remediation_by": "vulnerability",
   "repository_ids": [1, 3],
   "asset_group_ids": [10, 11, 12],
   "asset_group_labels": {"10": "Servers", "11": "Workstations", "12": "DMZ"},

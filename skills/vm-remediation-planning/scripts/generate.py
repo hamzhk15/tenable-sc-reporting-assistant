@@ -23,7 +23,7 @@ Config schema (all keys optional unless noted; sane defaults applied):
     "data_freshness": "day"|"week"|"month"|"all",   # default "all"
     "severities": ["critical","high","medium","low"],  # tracked severities
     "sla": {"critical":7,"high":30,"medium":60,"low":90},  # or null
-    "group_remediation_by": "assets" | "findings",  # default "findings"
+    "group_remediation_by": "vulnerability" | "host",  # default "vulnerability"
     "repository_ids": [1,2] | null,
     "asset_group_ids": [10,11] | null,
     "asset_group_labels": {"10":"Servers"},          # optional display names
@@ -71,8 +71,14 @@ def normalize(raw):
     cfg["severities"] = [c for c in order if c in codes] or [CRIT, HIGH, MED, LOW]
 
     cfg["sla"] = raw.get("sla")  # dict or None
-    grp = raw.get("group_remediation_by", "findings").lower()
-    cfg["group_remediation_by"] = "remediation" if grp in ("findings", "remediation") else "asset"
+    # Detailed-Remediation grouping. SC only supports iterating the detailed
+    # section by vulnerability or by host (grouping by remediation solution is
+    # not supported as a report iterator). Legacy values are mapped forward.
+    grp = raw.get("group_remediation_by", "vulnerability").lower()
+    if grp in ("assets", "asset", "host", "hosts"):
+        cfg["group_remediation_by"] = "host"
+    else:  # vulnerability, vuln, findings, remediation (legacy) -> vulnerability
+        cfg["group_remediation_by"] = "vulnerability"
 
     cfg["repository_ids"] = [str(r) for r in (raw.get("repository_ids") or [])] or None
     cfg["asset_group_ids"] = [str(a) for a in (raw.get("asset_group_ids") or [])] or None
@@ -185,7 +191,8 @@ def interview():
             "medium": int(_ask("      Medium SLA days", "60")),
             "low": int(_ask("      Low SLA days", "90")),
         }
-    grp = _ask("[6] Group remediation by: assets / findings", "findings").lower()
+    grp = _ask("[6] Detailed remediation grouped by: vulnerability / host",
+               "vulnerability").lower()
     raw["group_remediation_by"] = grp
     repos = _ask("[7] Filter by repository IDs? comma-separated, or blank", "")
     raw["repository_ids"] = [r.strip() for r in repos.split(",") if r.strip()] or None

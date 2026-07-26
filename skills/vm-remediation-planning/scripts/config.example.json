@@ -4,7 +4,7 @@
   "data_freshness": "month",
   "severities": ["critical", "high", "medium", "low"],
   "sla": {"critical": 7, "high": 30, "medium": 60, "low": 90},
-  "group_remediation_by": "findings",
+  "group_remediation_by": "vulnerability",
   "repository_ids": null,
   "asset_group_ids": null,
   "asset_group_labels": {},

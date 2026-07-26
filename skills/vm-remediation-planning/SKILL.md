@@ -34,8 +34,9 @@ Overview (trend + severity pie); SLA Compliance (when SLAs are defined);
 Understanding Risk (By-Severity matrix, By-VPR matrix, top-10 remediation,
 top-20 hosts — in that order); and a **Detailed Remediation** chapter that
 iterates either:
-- **by remediation** — each solution → its vulnerabilities + affected hosts; or
-- **by asset** — each host → its remediations + its vulnerabilities.
+- **by vulnerability** — each vulnerability → its affected hosts + remediation
+  details; or
+- **by host** — each host → its remediations + its vulnerabilities.
 
 ## How to use this skill
 
@@ -51,7 +52,9 @@ Every answer maps to a key in the config JSON (see `references/config-schema.md`
 4. **Which severities to track — Critical / High / Medium / Low?** → `severities`
    (**Never include Info** — Info findings are scan metadata, not vulnerabilities.)
 5. **SLAs defined?** If yes, days for Critical/High/Medium/Low. → `sla`
-6. **Group remediation by Assets or by Findings?** → `group_remediation_by`
+6. **Detailed remediation grouped by Vulnerability or by Host?** → `group_remediation_by`
+   (SC supports iterating the detailed section by vulnerability or by host —
+   grouping by remediation solution is not supported.)
 7. **Filter by repository IDs?** If yes, which. → `repository_ids`
 8. **Filter by asset group IDs?** If yes, which. → `asset_group_ids`
    (2–10 groups enables the By-Asset-Group matrix.)

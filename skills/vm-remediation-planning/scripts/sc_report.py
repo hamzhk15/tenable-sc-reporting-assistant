@@ -13,7 +13,7 @@ A report definition is a tree:
     iterator   -> { name, tag:"iterator", definition, location, elements: {components} }
 
 Sections mirror the dashboard, plus a "Detailed Remediation" chapter that
-iterates either by remediation solution or by host, per the user's choice.
+iterates either by vulnerability or by host, per the user's choice.
 """
 from sc_common import (b64, flt, C_NEUTRAL, C_GREEN, C_RED, C_AMBER, C_BLUE,
                        C_ORANGE, CRIT, HIGH, MED, LOW, SEV_LABEL)
@@ -292,13 +292,13 @@ def write_report(filename, name, description, chapters):
 # ---------------------------------------------------------------------------
 # Detailed-remediation column sets
 # ---------------------------------------------------------------------------
-# For the "by remediation" iterator: each solution row expands into its
-# vulnerabilities and the hosts that need it.
+# For the "by vulnerability" iterator: each vulnerability row expands into the
+# affected hosts and its full details/solution.
 _VULN_COLS = ["pluginID", "pluginName", "severity", "exploitAvailable",
               "cve", "patchPublished", "solution"]
 _HOST_COLS = ["ip", "dnsName", "osCPE", "total", "score"]
-# For the "by asset" iterator: each host row expands into its remediations
-# and vulnerabilities.
+# For the "by host" iterator: each host row expands into its remediations and
+# the vulnerabilities present on it.
 _REMEDIATION_COLS = ["solution", "scorePctg", "total", "hostTotal"]
 
 
@@ -429,36 +429,36 @@ def build_chapters(cfg, gf):
         detail_filters = [f for f in detail_filters if f["filterName"] != "severity"]
         detail_filters = detail_filters + [flt("severity", CRIT)]
 
-    if cfg["group_remediation_by"] == "remediation":
-        # One block per remediation solution: its vulns + hosts needing it.
+    if cfg["group_remediation_by"] == "vulnerability":
+        # One block per vulnerability: the hosts it affects + its full details.
         it = iterator(
-            "Per-Remediation Detail", "sumremediation", detail_filters,
+            "Per-Vulnerability Detail", "sumid", detail_filters,
             child_components=[
-                paragraph("4.2.2",
-                    "Vulnerabilities addressed by this remediation:"),
-                table_component("Related Vulnerabilities", _VULN_COLS,
-                                "vulndetails", detail_filters, data_points=100,
-                                sort_col="severity", sort_dir="desc"),
-                paragraph("4.2.3", "Hosts that need this remediation:"),
+                paragraph("4.2.2", "Hosts affected by this vulnerability:"),
                 table_component("Affected Hosts", _HOST_COLS, "sumip",
                                 detail_filters, data_points=100),
+                paragraph("4.2.3", "Vulnerability details and remediation:"),
+                table_component("Vulnerability Details", _VULN_COLS,
+                                "vulndetails", detail_filters, data_points=100,
+                                sort_col="severity", sort_dir="desc"),
             ],
             data_points=cfg.get("detail_max", 50),
-            columns=["solution", "scorePctg", "total", "hostTotal"],
-            sort_col="scorePctg")
-        chapters.append(chapter("Detailed Remediation (by Remediation)", [
+            columns=["pluginID", "pluginName", "severity", "total",
+                     "hostTotal"],
+            sort_col="severity")
+        chapters.append(chapter("Detailed Remediation (by Vulnerability)", [
             group("4.1", [
                 paragraph("4.1.1",
-                    "Remediations are listed by risk-reduction. Each remediation "
-                    "expands into the vulnerabilities it fixes and the hosts that "
-                    "need it."),
+                    "Vulnerabilities are listed by severity. Each vulnerability "
+                    "expands into the hosts it affects and its remediation "
+                    "details."),
             ]),
             group("4.2", [
-                paragraph("4.2.1", "Per-remediation breakdown:"),
+                paragraph("4.2.1", "Per-vulnerability breakdown:"),
                 it,
             ]),
         ]))
-    else:  # group by asset (host)
+    else:  # group by host
         it = iterator(
             "Per-Host Detail", "sumip", detail_filters,
             child_components=[
@@ -475,7 +475,7 @@ def build_chapters(cfg, gf):
             data_points=cfg.get("detail_max", 25),
             columns=["ip", "dnsName", "osCPE", "total", "score"],
             sort_col="score")
-        chapters.append(chapter("Detailed Remediation (by Asset)", [
+        chapters.append(chapter("Detailed Remediation (by Host)", [
             group("4.1", [
                 paragraph("4.1.1",
                     "Hosts are listed by weighted severity. Each host expands "
