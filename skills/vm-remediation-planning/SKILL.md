@@ -30,10 +30,9 @@ dashboard, a report, or both, and can upload them to a SC console with API keys.
 7. **Understanding Risk – Remediation Opportunities** — table, top 10 solutions.
 
 **Report** (`<report>`, type pdf, scVersion 6.6.0): About; Vulnerability
-Overview (trend + severity pie); Understanding Risk (top-10 remediation + top-20
-hosts); Understanding Risk by VPR (6-column matrix by VPR band); SLA Compliance
-(when SLAs are defined); and a **Detailed Remediation** chapter that iterates
-either:
+Overview (trend + severity pie); SLA Compliance (when SLAs are defined);
+Understanding Risk (top-10 remediation + top-20 hosts + a By-VPR 6-column
+matrix); and a **Detailed Remediation** chapter that iterates either:
 - **by remediation** — each solution → its vulnerabilities + affected hosts; or
 - **by asset** — each host → its remediations + its vulnerabilities.
 

@@ -311,7 +311,15 @@ def build_chapters(cfg, gf):
             ]),
         ]))
 
-    # ---- Chapter: Understanding Risk (Top remediation opportunities) -----
+    # ---- Chapter: Understanding Risk -------------------------------------
+    # Top remediation opportunities, most-vulnerable hosts, and the VPR-band
+    # risk matrix (threat-based priority) as a subsection directly below.
+    vpr_rows, vpr_specs = [], []
+    for label, vpr in VPR_BANDS:
+        vpr_rows.append(label)
+        vpr_specs.extend(_risk_row_specs(gf, flt("vprScore", vpr)))
+    vpr_rows.append("Total (All VPR)")
+    vpr_specs.extend(_risk_row_specs(gf, flt("vprScore", VPR_ALL)))
     chapters.append(chapter("Understanding Risk", [
         group("3.1", [
             paragraph("3.1.1",
@@ -331,26 +339,14 @@ def build_chapters(cfg, gf):
                              "vulnBar"], "sumip",
                             gf([flt("severity", sev_csv)]), data_points=20),
         ]),
-    ]))
-
-    # ---- Chapter: Understanding Risk by VPR ------------------------------
-    # Six-column risk breakdown with rows by VPR band (threat-based priority)
-    # instead of fixed CVSS severity.
-    row_labels, specs = [], []
-    for label, vpr in VPR_BANDS:
-        row_labels.append(label)
-        specs.extend(_risk_row_specs(gf, flt("vprScore", vpr)))
-    row_labels.append("Total (All VPR)")
-    specs.extend(_risk_row_specs(gf, flt("vprScore", VPR_ALL)))
-    chapters.append(chapter("Understanding Risk by VPR", [
-        group("3a.1", [
-            paragraph("3a.1.1",
+        group("3.3", [
+            paragraph("3.3.1",
                 "Risk breakdown by Vulnerability Priority Rating (VPR) band. "
                 "VPR is Tenable's threat-based priority score; unlike fixed "
                 "CVSS severity, it reflects current exploitability and threat "
                 "intelligence. Columns match the by-severity view."),
-            report_matrix("Understanding Risk - By VPR", row_labels,
-                          RISK_COLUMNS, specs),
+            report_matrix("Understanding Risk - By VPR", vpr_rows,
+                          RISK_COLUMNS, vpr_specs),
         ]),
     ]))
 
