@@ -286,6 +286,31 @@ def build_chapters(cfg, gf):
         ]),
     ]))
 
+    # ---- Chapter: SLA Compliance (only when SLAs are defined) ------------
+    # Placed above Understanding Risk so SLA posture leads the risk sections.
+    if cfg.get("sla"):
+        row_labels, specs = [], []
+        for s in sevs:
+            days = sla_days(cfg, s)
+            row_labels.append("%s (%d Days)" % (SEV_LABEL[s], days))
+            base = [flt("severity", s)]
+            specs.append(("sumid", gf(base), C_NEUTRAL))
+            specs.append(("sumid", gf(base + [flt("firstSeen", "0:%d" % days)]),
+                          C_GREEN))
+            specs.append(("sumid", gf(base + [flt("firstSeen", "%d:all" % days)]),
+                          C_RED))
+        chapters.append(chapter("SLA Compliance", [
+            group("2b.1", [
+                paragraph("2b.1.1",
+                    "Unmitigated findings measured against remediation SLAs. "
+                    "'Within SLA' counts findings first seen inside the SLA "
+                    "window; 'Overdue' counts findings older than it."),
+                report_matrix("Vulnerability SLA Compliance", row_labels,
+                              ["Total Unmitigated", "Within SLA", "Overdue"],
+                              specs),
+            ]),
+        ]))
+
     # ---- Chapter: Understanding Risk (Top remediation opportunities) -----
     chapters.append(chapter("Understanding Risk", [
         group("3.1", [
@@ -328,30 +353,6 @@ def build_chapters(cfg, gf):
                           RISK_COLUMNS, specs),
         ]),
     ]))
-
-    # ---- Chapter: SLA Compliance (only when SLAs are defined) ------------
-    if cfg.get("sla"):
-        row_labels, specs = [], []
-        for s in sevs:
-            days = sla_days(cfg, s)
-            row_labels.append("%s (%d Days)" % (SEV_LABEL[s], days))
-            base = [flt("severity", s)]
-            specs.append(("sumid", gf(base), C_NEUTRAL))
-            specs.append(("sumid", gf(base + [flt("firstSeen", "0:%d" % days)]),
-                          C_GREEN))
-            specs.append(("sumid", gf(base + [flt("firstSeen", "%d:all" % days)]),
-                          C_RED))
-        chapters.append(chapter("SLA Compliance", [
-            group("3b.1", [
-                paragraph("3b.1.1",
-                    "Unmitigated findings measured against remediation SLAs. "
-                    "'Within SLA' counts findings first seen inside the SLA "
-                    "window; 'Overdue' counts findings older than it."),
-                report_matrix("Vulnerability SLA Compliance", row_labels,
-                              ["Total Unmitigated", "Within SLA", "Overdue"],
-                              specs),
-            ]),
-        ]))
 
     # ---- Chapter: Detailed Remediation (grouping-dependent) --------------
     detail_filters = gf([flt("severity", sev_csv)])
