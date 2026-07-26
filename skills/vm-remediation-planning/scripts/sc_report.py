@@ -312,8 +312,15 @@ def build_chapters(cfg, gf):
         ]))
 
     # ---- Chapter: Understanding Risk -------------------------------------
-    # Top remediation opportunities, most-vulnerable hosts, and the VPR-band
-    # risk matrix (threat-based priority) as a subsection directly below.
+    # Order: By Severity, By VPR, Top 10 Remediation, Top 20 Hosts.
+    # By-Severity matrix rows: each tracked severity plus a grand-total row.
+    sev_rows, sev_specs = [], []
+    for s in sevs:
+        sev_rows.append(SEV_LABEL[s])
+        sev_specs.extend(_risk_row_specs(gf, flt("severity", s)))
+    sev_rows.append("Total (All Tracked)")
+    sev_specs.extend(_risk_row_specs(gf, flt("severity", sev_csv)))
+    # By-VPR matrix rows: each VPR band plus a total row.
     vpr_rows, vpr_specs = [], []
     for label, vpr in VPR_BANDS:
         vpr_rows.append(label)
@@ -323,6 +330,23 @@ def build_chapters(cfg, gf):
     chapters.append(chapter("Understanding Risk", [
         group("3.1", [
             paragraph("3.1.1",
+                "Risk breakdown by CVSS severity: total hosts, mitigated vs "
+                "unmitigated findings, exploitable exposure, and long-overdue "
+                "(>30d patchable) exploitable exposure."),
+            report_matrix("Understanding Risk - By Severity", sev_rows,
+                          RISK_COLUMNS, sev_specs),
+        ]),
+        group("3.2", [
+            paragraph("3.2.1",
+                "Risk breakdown by Vulnerability Priority Rating (VPR) band. "
+                "VPR is Tenable's threat-based priority score; unlike fixed "
+                "CVSS severity, it reflects current exploitability and threat "
+                "intelligence. Columns match the by-severity view."),
+            report_matrix("Understanding Risk - By VPR", vpr_rows,
+                          RISK_COLUMNS, vpr_specs),
+        ]),
+        group("3.3", [
+            paragraph("3.3.1",
                 "Top 10 remediation opportunities ranked by risk reduction. "
                 "Addressing these solutions removes the most risk per action."),
             table_component("Top 10 Remediation Opportunities",
@@ -331,22 +355,13 @@ def build_chapters(cfg, gf):
                             data_points=10, sort_col="scorePctg",
                             sort_dir="desc"),
         ]),
-        group("3.2", [
-            paragraph("3.2.1",
+        group("3.4", [
+            paragraph("3.4.1",
                 "Most vulnerable hosts, ranked by weighted severity score."),
             table_component("Top 20 Most Vulnerable Hosts",
                             ["ip", "dnsName", "osCPE", "total", "score",
                              "vulnBar"], "sumip",
                             gf([flt("severity", sev_csv)]), data_points=20),
-        ]),
-        group("3.3", [
-            paragraph("3.3.1",
-                "Risk breakdown by Vulnerability Priority Rating (VPR) band. "
-                "VPR is Tenable's threat-based priority score; unlike fixed "
-                "CVSS severity, it reflects current exploitability and threat "
-                "intelligence. Columns match the by-severity view."),
-            report_matrix("Understanding Risk - By VPR", vpr_rows,
-                          RISK_COLUMNS, vpr_specs),
         ]),
     ]))
 
