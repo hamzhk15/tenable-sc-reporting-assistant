@@ -92,8 +92,13 @@ def matrix(title, row_labels, col_labels, cell_specs, base_cluster=2000):
         out_text = spec[4] if len(spec) > 4 else "vulnCount"
         qtype = spec[5] if len(spec) > 5 else "vuln"
         cells.append(cell(seq, tool, filters, colors, source, out_text, qtype))
+    # stripType="column" clusters vertical strips, so there must be one cluster
+    # per COLUMN, not per row. Too few clusters leaves the un-clustered columns
+    # unqueried until the widget is manually re-saved in SC (the "edit every
+    # widget to make it render" symptom). Same rule as the report matrices.
     clusters = [{"id": str(base_cluster + i), "strips": str(i + 1),
-                 "schedule": "FREQ=DAILY;INTERVAL=1"} for i in range(rows)]
+                 "schedule": "FREQ=DAILY;INTERVAL=1"}
+                for i in range(len(col_labels))]
     return {
         "styleID": "-1", "cells": cells, "rows": str(rows),
         "columns": str(len(col_labels)), "title": title, "stripType": "column",

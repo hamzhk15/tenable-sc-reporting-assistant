@@ -52,6 +52,27 @@ def _check_definitions(raw, problems, label):
 def _walk(obj, problems, label):
     """Recursively inspect a decoded definition object for content bugs."""
     if isinstance(obj, dict):
+        # Matrix cluster-count check. With stripType="column" SC clusters
+        # vertical strips, so there must be one cluster per COLUMN (per ROW
+        # otherwise). Too few clusters leaves the un-clustered strips unqueried
+        # until the widget is manually re-saved in SC, and can null MatrixCluster
+        # rows on Edit/Save. This catches the classic "must edit every widget to
+        # make it render" regression.
+        if "stripType" in obj and "clusters" in obj:
+            clusters = obj.get("clusters")
+            n_clusters = len(clusters) if isinstance(clusters, (dict, list)) else 0
+            if obj.get("stripType") == "column":
+                expected = _count_labels(obj.get("columnLabels"))
+                axis = "columns"
+            else:
+                expected = _count_labels(obj.get("rowLabels"))
+                axis = "rows"
+            if expected and n_clusters != expected:
+                problems.append("%s: matrix '%s' has %d clusters but %d %s "
+                                "(stripType=%s needs one cluster per %s)"
+                                % (label, obj.get("title", "?"), n_clusters,
+                                   expected, axis, obj.get("stripType"),
+                                   axis.rstrip("s")))
         # invisible-color check
         for cond in _iter_conditionals(obj):
             colors = cond.get("outputColors", "")
@@ -86,6 +107,13 @@ def _walk(obj, problems, label):
     elif isinstance(obj, list):
         for v in obj:
             _walk(v, problems, label)
+
+
+def _count_labels(labels):
+    """Length of a matrix label collection (int-keyed dict or list)."""
+    if isinstance(labels, (dict, list)):
+        return len(labels)
+    return 0
 
 
 def _iter_conditionals(obj):
