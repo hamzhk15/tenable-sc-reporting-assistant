@@ -15,13 +15,43 @@ A report definition is a tree:
 Sections mirror the dashboard, plus a "Detailed Remediation" chapter that
 iterates either by remediation solution or by host, per the user's choice.
 """
-from sc_common import (b64, flt, C_NEUTRAL, C_GREEN, C_RED, CRIT, HIGH, MED,
-                       LOW, SEV_LABEL)
+from sc_common import (b64, flt, C_NEUTRAL, C_GREEN, C_RED, C_AMBER, C_BLUE,
+                       C_ORANGE, CRIT, HIGH, MED, LOW, SEV_LABEL)
 from xml.sax.saxutils import escape
 
 # Default SLA (days-to-remediate) per severity, used only if the user enabled
 # SLAs but didn't override a given severity.
 DEFAULT_SLA = {CRIT: 7, HIGH: 30, MED: 60, LOW: 90}
+
+# VPR (Vulnerability Priority Rating) bands, high->low. Label carries the score
+# range; value is the vprScore filter range. "0.1-10" = all VPR-scored (total).
+VPR_BANDS = [("Critical (9.0-10.0)", "9-10"), ("High (7.0-8.9)", "7-8.9"),
+             ("Medium (4.0-6.9)", "4-6.9"), ("Low (0.1-3.9)", "0.1-3.9")]
+VPR_ALL = "0.1-10"
+
+# The six Understanding-Risk columns (shared with the dashboard template).
+RISK_COLUMNS = [
+    "Total Assets (Hosts)", "Mitigated Vulns", "Unmitigated Vulns",
+    "Exploitable", "Exploitable + Patch >30d", "Hosts w/ Exploitable Patch >30d",
+]
+
+
+def _risk_row_specs(gf, scope_filter):
+    """Six Understanding-Risk cells for one row (report context).
+
+    Spec tuple: (tool, filters, colors, out_text, source).
+    """
+    base = [scope_filter]
+    expl = base + [flt("exploitAvailable", "true")]
+    expl_patch = expl + [flt("patchPublished", "30:all")]
+    return [
+        ("sumip", gf(base), C_BLUE, "ipCount", "cumulative"),
+        ("sumid", gf(base), C_GREEN, "vulnCount", "patched"),   # mitigated
+        ("sumid", gf(base), C_NEUTRAL, "vulnCount", "cumulative"),  # unmitigated
+        ("sumid", gf(expl), C_AMBER, "vulnCount", "cumulative"),
+        ("sumid", gf(expl_patch), C_ORANGE, "vulnCount", "cumulative"),
+        ("sumip", gf(expl_patch), C_RED, "ipCount", "cumulative"),
+    ]
 
 
 def sla_days(cfg, sev_code):
@@ -107,11 +137,15 @@ def _report_cell(seq, tool, filters, colors, out_text="vulnCount",
 
 
 def report_matrix(name, row_labels, col_labels, cell_specs, base_cluster=2000):
-    """Report-context matrix. cell_specs row-major: (tool, filters, colors)."""
+    """Report-context matrix. cell_specs row-major:
+    (tool, filters, colors[, out_text[, source]])."""
     rows = len(row_labels)
     cells = []
     for seq, spec in enumerate(cell_specs, start=1):
-        cells.append(_report_cell(seq, spec[0], spec[1], spec[2]))
+        out_text = spec[3] if len(spec) > 3 else "vulnCount"
+        source = spec[4] if len(spec) > 4 else "cumulative"
+        cells.append(_report_cell(seq, spec[0], spec[1], spec[2],
+                                  out_text=out_text, source=source))
     clusters = [{"id": str(base_cluster + i), "strips": str(i + 1),
                  "schedule": "FREQ=DAILY;INTERVAL=1"} for i in range(rows)]
     defn = {
@@ -271,6 +305,27 @@ def build_chapters(cfg, gf):
                             ["ip", "dnsName", "osCPE", "total", "score",
                              "vulnBar"], "sumip",
                             gf([flt("severity", sev_csv)]), data_points=20),
+        ]),
+    ]))
+
+    # ---- Chapter: Understanding Risk by VPR ------------------------------
+    # Six-column risk breakdown with rows by VPR band (threat-based priority)
+    # instead of fixed CVSS severity.
+    row_labels, specs = [], []
+    for label, vpr in VPR_BANDS:
+        row_labels.append(label)
+        specs.extend(_risk_row_specs(gf, flt("vprScore", vpr)))
+    row_labels.append("Total (All VPR)")
+    specs.extend(_risk_row_specs(gf, flt("vprScore", VPR_ALL)))
+    chapters.append(chapter("Understanding Risk by VPR", [
+        group("3a.1", [
+            paragraph("3a.1.1",
+                "Risk breakdown by Vulnerability Priority Rating (VPR) band. "
+                "VPR is Tenable's threat-based priority score; unlike fixed "
+                "CVSS severity, it reflects current exploitability and threat "
+                "intelligence. Columns match the by-severity view."),
+            report_matrix("Understanding Risk - By VPR", row_labels,
+                          RISK_COLUMNS, specs),
         ]),
     ]))
 

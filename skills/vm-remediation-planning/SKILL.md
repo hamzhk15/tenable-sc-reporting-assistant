@@ -21,11 +21,19 @@ dashboard, a report, or both, and can upload them to a SC console with API keys.
    Unmitigated, Exploitable, Exploitable+Patch>30d, Hosts w/ Exploitable Patch>30d.
 4. **Understanding Risk – By Severity** — same columns, one row per tracked
    severity plus a total row.
-5. **Understanding Risk – Remediation Opportunities** — table, top 10 solutions.
+5. **Understanding Risk – By VPR** — same columns, one row per VPR band
+   (Critical 9.0–10 / High 7.0–8.9 / Medium 4.0–6.9 / Low 0.1–3.9) plus a
+   total row. VPR is threat-based priority, not fixed CVSS severity.
+6. **Vulnerability SLA Compliance** — matrix (only when SLAs are defined):
+   one row per severity (labeled with its SLA days), columns = Total
+   Unmitigated / Within SLA / Overdue.
+7. **Understanding Risk – Remediation Opportunities** — table, top 10 solutions.
 
 **Report** (`<report>`, type pdf, scVersion 6.6.0): About; Vulnerability
 Overview (trend + severity pie); Understanding Risk (top-10 remediation + top-20
-hosts); and a **Detailed Remediation** chapter that iterates either:
+hosts); Understanding Risk by VPR (6-column matrix by VPR band); SLA Compliance
+(when SLAs are defined); and a **Detailed Remediation** chapter that iterates
+either:
 - **by remediation** — each solution → its vulnerabilities + affected hosts; or
 - **by asset** — each host → its remediations + its vulnerabilities.
 

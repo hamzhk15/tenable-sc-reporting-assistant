@@ -34,6 +34,13 @@ def sla_days(cfg, sev_code):
 WINDOWS = [("Last Day", "0:1"), ("Last Week", "0:7"), ("Last Month", "0:30"),
            ("Last Quarter", "0:90"), ("Last Year", "0:365")]
 
+# VPR (Vulnerability Priority Rating) bands, high->low. The label carries the
+# score range; the value is the vprScore filter range. "0.1-10" is the union
+# of all VPR-scored findings (used for the total row).
+VPR_BANDS = [("Critical (9.0-10.0)", "9-10"), ("High (7.0-8.9)", "7-8.9"),
+             ("Medium (4.0-6.9)", "4-6.9"), ("Low (0.1-3.9)", "0.1-3.9")]
+VPR_ALL = "0.1-10"
+
 # ---------------------------------------------------------------------------
 # Query-name generation. SC names queries per-component; a simple stable
 # counter keyed off the cell sequence avoids the "stuck loading" bug caused
@@ -282,6 +289,24 @@ def build_components(cfg, gf):
         "patchable) exploitable exposure. Scope: %s." % scope,
         "matrix", 2,
         matrix("Understanding Risk - By Severity",
+               row_labels, RISK_COLUMNS, specs))
+
+    # --- 4a. Understanding Risk - By VPR (matrix) --------------------------
+    # Same six columns as By-Severity, but rows are VPR bands (threat-based
+    # priority) instead of the fixed CVSS severity.
+    row_labels, specs = [], []
+    for label, vpr in VPR_BANDS:
+        row_labels.append(label)
+        specs.extend(_risk_row_specs(gf, flt("vprScore", vpr)))
+    row_labels.append("Total (All VPR)")
+    specs.extend(_risk_row_specs(gf, flt("vprScore", VPR_ALL)))
+    add("Understanding Risk - By VPR",
+        "Per-VPR-band risk breakdown (plus a total row): hosts, mitigated vs "
+        "unmitigated findings, exploitable exposure, and long-overdue (>30d "
+        "patchable) exploitable exposure. Rows use the Vulnerability Priority "
+        "Rating (threat-based), not fixed CVSS severity. Scope: %s." % scope,
+        "matrix", 2,
+        matrix("Understanding Risk - By VPR",
                row_labels, RISK_COLUMNS, specs))
 
     # --- 4b. Vulnerability SLA Compliance (matrix) -------------------------

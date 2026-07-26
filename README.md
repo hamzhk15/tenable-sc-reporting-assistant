@@ -14,6 +14,8 @@ via API keys, talking directly to the SC REST API (no third-party dependencies).
   mitigated — across Last Day / Week / Month / Quarter / Year)
 - Understanding Risk – By Asset Group (matrix, for 2–10 asset groups)
 - Understanding Risk – By Severity (matrix)
+- Understanding Risk – By VPR (matrix, rows by VPR band)
+- Vulnerability SLA Compliance (matrix, when SLAs are defined)
 - Understanding Risk – Remediation Opportunities (top 10 table)
 
 **Report** (PDF template)
