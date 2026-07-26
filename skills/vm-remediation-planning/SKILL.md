@@ -51,13 +51,12 @@ Every answer maps to a key in the config JSON (see `references/config-schema.md`
 > **Never substitute placeholder IDs.** If the user says they want to filter by
 > repository or asset-group IDs, you MUST stop and collect the actual IDs before
 > generating — either by asking them, or by looking them up on the connected
-> Tenable MCP server / pyTenable. Generating with made-up IDs is a failed run.
+> Tenable MCP server. Generating with made-up IDs is a failed run.
 9. *(Report only)* **Detailed section: exploitable vulns only?** → `detail_exploitable_only`
 10. *(Report only)* **Detailed section: critical vulns only?** → `detail_critical_only`
 
 If the user doesn't know their repository or asset-group IDs and wants to upload,
-you can look them up via the connected Tenable MCP server (or `pyTenable`) before
-generating.
+you can look them up via the connected Tenable MCP server before generating.
 
 ### Step 2 — Write the config and generate
 
@@ -87,8 +86,10 @@ deliver a file that fails validation.**
   - Dashboard → *Dashboard > Options > Add Dashboard > Import*
   - Report → *Reporting > Report Templates > Options > Import*
 - **Automatic upload**: if the user provides a console URL + API keys, use
-  `upload.py` (pyTenable). Never hard-code credentials; pass them via env vars
-  or flags and confirm with the user before uploading to a live console.
+  `upload.py` (stdlib-only; talks to the SC REST API directly — no third-party
+  packages). Never hard-code credentials; pass them via env vars or flags and
+  confirm with the user before uploading to a live console. Use `--insecure`
+  only for self-signed lab consoles.
 
 ```bash
 export TSC_HOST=sc.example.com TSC_ACCESS_KEY=... TSC_SECRET_KEY=...

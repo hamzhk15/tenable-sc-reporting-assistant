@@ -4,7 +4,7 @@ A **Claude skill** that helps Vulnerability Management (VM) analysts and
 engineers generate importable **Tenable Security Center (Tenable SC /
 SecurityCenter)** XML templates for a **Vulnerability Management and Remediation
 Planning** dashboard and/or report — and optionally upload them to a SC console
-via API keys (using [pyTenable](https://pytenable.readthedocs.io/)).
+via API keys, talking directly to the SC REST API (no third-party dependencies).
 
 ## What it generates
 
@@ -40,7 +40,7 @@ skills/vm-remediation-planning/
     ├── sc_report.py             # report chapter/group/iterator builders
     ├── generate.py              # config → XML (CLI, --config or --interactive)
     ├── validate.py              # pre-flight import checks
-    ├── upload.py                # pyTenable import into a live console
+    ├── upload.py                # stdlib REST import into a live console
     └── config.example.json      # sample config
 ```
 
@@ -57,13 +57,14 @@ python3 generate.py --interactive
 # always validate before importing
 python3 validate.py ./out/*.xml
 
-# optional: upload to a console (pip install pytenable)
+# optional: upload straight into a console via the SC REST API
 export TSC_HOST=sc.example.com TSC_ACCESS_KEY=... TSC_SECRET_KEY=...
 python3 upload.py --dashboard "./out/VM Remediation Planning - Dashboard.xml"
+# add --insecure for self-signed lab consoles
 ```
 
-The generator uses only the Python standard library. `upload.py` needs
-`pytenable` (see `requirements.txt`).
+Everything uses only the Python standard library — no `pip install`, no
+third-party dependencies.
 
 ## Using it as a Claude skill
 
