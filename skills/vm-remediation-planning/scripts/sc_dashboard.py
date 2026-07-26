@@ -206,15 +206,13 @@ def build_components(cfg, gf):
     scope = cfg["scope_label"]
 
     # --- 1. Vulnerability Trend Over Time (lineChart) ----------------------
-    # The trend window follows data_freshness so the chart's X-axis matches the
-    # scope. "all" has no window, so fall back to the widest preset (1 year).
-    trend_days = {"day": 7, "week": 7, "month": 30, "quarter": 90,
-                  "year": 365, "all": 365}.get(cfg["data_freshness"], 90)
+    # Trend window is fixed at 90 days (SC "Within 3 Months"). Tying it to
+    # data_freshness caused the chart to stop rendering, so keep it constant.
     lines = [(SEV_LABEL[s], gf([flt("severity", s)])) for s in sevs]
     add("Vulnerability Trend Over Time",
         "Trend of unmitigated vulnerabilities over time, one line per tracked "
         "severity. Scope: %s." % scope,
-        "lineChart", 1, linechart(lines, timeframe_days=trend_days))
+        "lineChart", 1, linechart(lines))
 
     # --- 2. Scanning History (matrix) --------------------------------------
     # Row 1: assets scanned (plugin 19506, count HOSTS) per window.
