@@ -259,6 +259,32 @@ def build_components(cfg, gf):
                 "Vulns Mitigated"],
                [w[0] for w in WINDOWS], specs))
 
+    # --- 2b. Vulnerability SLA Compliance (matrix) -------------------------
+    # First component of column 2 (top-right), above the risk matrices. Only
+    # when the user defined SLAs. Per severity: unmitigated findings split by
+    # age (firstSeen) against that severity's SLA -> Within SLA vs Overdue.
+    if cfg.get("sla"):
+        row_labels, specs = [], []
+        for s in sevs:
+            days = sla_days(cfg, s)
+            row_labels.append("%s (%d Days)" % (SEV_LABEL[s], days))
+            base = [flt("severity", s)]
+            specs.append(("sumid", gf(base), C_NEUTRAL))
+            # Within SLA: first seen within the SLA window (age 0..days).
+            specs.append(("sumid", gf(base + [flt("firstSeen", "0:%d" % days)]),
+                          C_GREEN))
+            # Overdue: first seen older than the SLA window (age days..all).
+            specs.append(("sumid", gf(base + [flt("firstSeen", "%d:all" % days)]),
+                          C_RED))
+        add("Vulnerability SLA Compliance",
+            "Unmitigated findings per severity measured against remediation "
+            "SLAs: total, within SLA (first seen within the SLA window), and "
+            "overdue (older than the SLA window). Scope: %s." % scope,
+            "matrix", 2,
+            matrix("Vulnerability SLA Compliance",
+                   row_labels,
+                   ["Total Unmitigated", "Within SLA", "Overdue"], specs))
+
     # --- 3. Understanding Risk - By Asset Group (matrix) -------------------
     # Only when the user filtered by 2..10 asset groups.
     groups = cfg["asset_group_ids"]
@@ -308,31 +334,6 @@ def build_components(cfg, gf):
         "matrix", 2,
         matrix("Understanding Risk - By VPR",
                row_labels, RISK_COLUMNS, specs))
-
-    # --- 4b. Vulnerability SLA Compliance (matrix) -------------------------
-    # Only when the user defined SLAs. Per severity: unmitigated findings split
-    # by age (firstSeen) against that severity's SLA -> Within SLA vs Overdue.
-    if cfg.get("sla"):
-        row_labels, specs = [], []
-        for s in sevs:
-            days = sla_days(cfg, s)
-            row_labels.append("%s (%d Days)" % (SEV_LABEL[s], days))
-            base = [flt("severity", s)]
-            specs.append(("sumid", gf(base), C_NEUTRAL))
-            # Within SLA: first seen within the SLA window (age 0..days).
-            specs.append(("sumid", gf(base + [flt("firstSeen", "0:%d" % days)]),
-                          C_GREEN))
-            # Overdue: first seen older than the SLA window (age days..all).
-            specs.append(("sumid", gf(base + [flt("firstSeen", "%d:all" % days)]),
-                          C_RED))
-        add("Vulnerability SLA Compliance",
-            "Unmitigated findings per severity measured against remediation "
-            "SLAs: total, within SLA (first seen within the SLA window), and "
-            "overdue (older than the SLA window). Scope: %s." % scope,
-            "matrix", 1,
-            matrix("Vulnerability SLA Compliance",
-                   row_labels,
-                   ["Total Unmitigated", "Within SLA", "Overdue"], specs))
 
     # --- 5. Understanding Risk - Remediation Opportunities (table) ---------
     add("Understanding Risk - Remediation Opportunities (Top 10)",
