@@ -46,7 +46,14 @@ Every answer maps to a key in the config JSON (see `references/config-schema.md`
 6. **Group remediation by Assets or by Findings?** → `group_remediation_by`
 7. **Filter by repository IDs?** If yes, which. → `repository_ids`
 8. **Filter by asset group IDs?** If yes, which. → `asset_group_ids`
-   (2–10 groups enables the By-Asset-Group matrix. Ask for display names if handy.)
+   (2–10 groups enables the By-Asset-Group matrix.)
+
+> **Asset-group rows must show the real group name, never "Asset Group N".**
+> - If the IDs came from the console (via `list_scope.py` / `--resolve-names`),
+>   use the real names automatically.
+> - If the user typed IDs manually, **ask for each group's name, one by one**,
+>   and put them in `asset_group_labels` (`{"3":"Windows Hosts", ...}`).
+> `generate.py` warns if any asset group is left without a real name.
 
 > **Never substitute placeholder IDs.** If the user says they want to filter by
 > repository or asset-group IDs, you MUST stop and collect the actual IDs before

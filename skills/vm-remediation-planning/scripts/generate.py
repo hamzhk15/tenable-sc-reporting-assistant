@@ -41,6 +41,12 @@ from sc_common import flt, CRIT, HIGH, MED, LOW, SEV_CODE, SEV_LABEL
 import sc_dashboard
 import sc_report
 
+# list_scope is optional: only needed for --resolve-names (live console lookup).
+try:
+    import list_scope
+except ImportError:
+    list_scope = None
+
 FRESHNESS_WINDOW = {"day": "0:1", "week": "0:7", "month": "0:30",
                     "quarter": "0:90", "all": None}
 FRESHNESS_LABEL = {"day": "Last Day", "week": "Last Week",
@@ -115,6 +121,37 @@ def make_gf(cfg):
 
 
 # ---------------------------------------------------------------------------
+# Resolve real asset-group names from the console (so rows aren't labeled with
+# a placeholder like "Asset Group 3"). Fills cfg["asset_group_labels"] for any
+# ID that doesn't already have a label. Requires SC credentials in the env or
+# passed through `conn`.
+# ---------------------------------------------------------------------------
+def resolve_asset_group_names(cfg, conn):
+    if not cfg["asset_group_ids"]:
+        return
+    if list_scope is None:
+        sys.exit("--resolve-names needs list_scope.py alongside generate.py.")
+    import ssl
+    host = conn.get("host") or os.environ.get("TSC_HOST")
+    access = conn.get("access") or os.environ.get("TSC_ACCESS_KEY")
+    secret = conn.get("secret") or os.environ.get("TSC_SECRET_KEY")
+    port = conn.get("port") or int(os.environ.get("TSC_PORT", "443"))
+    if not (host and access and secret):
+        sys.exit("--resolve-names needs TSC_HOST / TSC_ACCESS_KEY / "
+                 "TSC_SECRET_KEY (or --host/--access-key/--secret-key).")
+    base = "https://%s:%d" % (host, int(port))
+    ctx = ssl.create_default_context()
+    if conn.get("insecure"):
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+    keyhdr = list_scope._keyheader(access, secret)
+    by_id = {g["id"]: g["name"] for g in list_scope.list_asset_groups(base, ctx, keyhdr)}
+    for gid in cfg["asset_group_ids"]:
+        if gid not in cfg["asset_group_labels"] and gid in by_id:
+            cfg["asset_group_labels"][gid] = by_id[gid]
+
+
+# ---------------------------------------------------------------------------
 # Interactive interview (mirrors the questions in SKILL.md)
 # ---------------------------------------------------------------------------
 def _ask(prompt, default=""):
@@ -153,7 +190,17 @@ def interview():
     repos = _ask("[7] Filter by repository IDs? comma-separated, or blank", "")
     raw["repository_ids"] = [r.strip() for r in repos.split(",") if r.strip()] or None
     ags = _ask("[8] Filter by asset group IDs? comma-separated, or blank", "")
-    raw["asset_group_ids"] = [a.strip() for a in ags.split(",") if a.strip()] or None
+    ag_ids = [a.strip() for a in ags.split(",") if a.strip()]
+    raw["asset_group_ids"] = ag_ids or None
+    # Manual IDs carry no name, so ask for each group's name one by one — the
+    # By-Asset-Group matrix rows must show the real name, not "Asset Group N".
+    if ag_ids:
+        labels = {}
+        print("      Enter a name for each asset group ID (used as the row label):")
+        for gid in ag_ids:
+            labels[gid] = _ask("        Name for asset group %s" % gid,
+                               "Asset Group %s" % gid)
+        raw["asset_group_labels"] = labels
     if raw["artifact"] in ("report", "both"):
         raw["detail_exploitable_only"] = _ask_yn(
             "[9] Detailed section: exploitable vulns only?", False)
@@ -199,6 +246,15 @@ def main():
     ap.add_argument("--interactive", action="store_true",
                     help="prompt for config instead of reading a file")
     ap.add_argument("--out-dir", default=".", help="output directory")
+    ap.add_argument("--resolve-names", action="store_true",
+                    help="look up real asset-group names from the console "
+                         "(needs TSC_HOST/TSC_ACCESS_KEY/TSC_SECRET_KEY)")
+    ap.add_argument("--host")
+    ap.add_argument("--port", type=int)
+    ap.add_argument("--access-key")
+    ap.add_argument("--secret-key")
+    ap.add_argument("--insecure", action="store_true",
+                    help="skip TLS verification (self-signed lab consoles only)")
     args = ap.parse_args()
 
     if args.interactive:
@@ -210,6 +266,22 @@ def main():
         ap.error("provide --config FILE or --interactive")
 
     cfg = normalize(raw)
+
+    if args.resolve_names:
+        resolve_asset_group_names(cfg, {
+            "host": args.host, "port": args.port, "access": args.access_key,
+            "secret": args.secret_key, "insecure": args.insecure})
+
+    # Guard: never ship a placeholder label. If an asset group still has no
+    # real name, warn loudly so the operator supplies one (interview asks
+    # per-ID; config callers should set asset_group_labels or --resolve-names).
+    for gid in (cfg["asset_group_ids"] or []):
+        lbl = cfg["asset_group_labels"].get(gid)
+        if not lbl or lbl == "Asset Group %s" % gid:
+            print("  ! Warning: asset group %s has no real name; row will read "
+                  "'Asset Group %s'. Add it to asset_group_labels or use "
+                  "--resolve-names." % (gid, gid), file=sys.stderr)
+
     written = generate(cfg, args.out_dir)
 
     print("\nScope: %s" % cfg["scope_label"])
