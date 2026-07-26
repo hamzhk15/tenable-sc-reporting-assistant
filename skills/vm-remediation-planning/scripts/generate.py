@@ -41,9 +41,11 @@ from sc_common import flt, CRIT, HIGH, MED, LOW, SEV_CODE, SEV_LABEL
 import sc_dashboard
 import sc_report
 
-FRESHNESS_WINDOW = {"day": "0:1", "week": "0:7", "month": "0:30", "all": None}
+FRESHNESS_WINDOW = {"day": "0:1", "week": "0:7", "month": "0:30",
+                    "quarter": "0:90", "all": None}
 FRESHNESS_LABEL = {"day": "Last Day", "week": "Last Week",
-                   "month": "Last Month", "all": "All data"}
+                   "month": "Last Month", "quarter": "Last Quarter (90d)",
+                   "all": "All data"}
 
 
 # ---------------------------------------------------------------------------
@@ -135,7 +137,7 @@ def interview():
     print("=" * 64)
     raw["artifact"] = _ask("[1] Create dashboard / report / both", "both").lower()
     raw["vuln_data"] = _ask("[2] Vulnerability data: active / all", "active").lower()
-    raw["data_freshness"] = _ask("[3] Data freshness: day / week / month / all", "all").lower()
+    raw["data_freshness"] = _ask("[3] Data freshness: day / week / month / quarter / all", "all").lower()
     sev = _ask("[4] Severities to track (comma: critical,high,medium,low)",
                "critical,high,medium,low")
     raw["severities"] = [s.strip() for s in sev.split(",") if s.strip()]

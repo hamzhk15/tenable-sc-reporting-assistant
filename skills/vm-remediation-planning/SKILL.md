@@ -39,7 +39,7 @@ Every answer maps to a key in the config JSON (see `references/config-schema.md`
 1. **Dashboard, report, or both?** → `artifact`
 2. **Which vulnerability data — active only, or everything?** → `vuln_data`
    (`active` adds `pluginType=active` globally; `all` includes passive/other.)
-3. **Data freshness — Last Day / Week / Month / all data?** → `data_freshness`
+3. **Data freshness — Last Day / Week / Month / Quarter (90d) / all data?** → `data_freshness`
 4. **Which severities to track — Critical / High / Medium / Low?** → `severities`
    (**Never include Info** — Info findings are scan metadata, not vulnerabilities.)
 5. **SLAs defined?** If yes, days for Critical/High/Medium/Low. → `sla`
@@ -47,6 +47,11 @@ Every answer maps to a key in the config JSON (see `references/config-schema.md`
 7. **Filter by repository IDs?** If yes, which. → `repository_ids`
 8. **Filter by asset group IDs?** If yes, which. → `asset_group_ids`
    (2–10 groups enables the By-Asset-Group matrix. Ask for display names if handy.)
+
+> **Never substitute placeholder IDs.** If the user says they want to filter by
+> repository or asset-group IDs, you MUST stop and collect the actual IDs before
+> generating — either by asking them, or by looking them up on the connected
+> Tenable MCP server / pyTenable. Generating with made-up IDs is a failed run.
 9. *(Report only)* **Detailed section: exploitable vulns only?** → `detail_exploitable_only`
 10. *(Report only)* **Detailed section: critical vulns only?** → `detail_critical_only`
 
