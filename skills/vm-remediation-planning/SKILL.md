@@ -113,6 +113,21 @@ export TSC_HOST=sc.example.com TSC_ACCESS_KEY=... TSC_SECRET_KEY=...
 python3 upload.py --dashboard "…- Dashboard.xml" --report "…- Report.xml"
 ```
 
+### Step 5 — Tell the user about first-load "No Data" widgets
+
+After import, **some widgets may show "No Data" / not populate until they are
+re-saved once.** This is a known Tenable SC behavior: the imported component
+doesn't get queried until its definition is (re)committed. If the user reports
+an empty or stuck widget, tell them to:
+
+1. On the dashboard, click the widget's gear/options → **Edit**.
+2. Open any one of its filters, change it and change it back (or just re-select
+   the same value) so the form registers a change.
+3. **Submit / Save.** The widget then runs its query and populates.
+
+Repeat per affected widget. This does not indicate a bad template — the XML is
+correct; SC just needs the definition re-committed once after import.
+
 ## Critical correctness rules (baked into the scripts — respect them)
 
 - **Definitions are base64(PHP-serialized) with UTF-8 *byte*-length prefixes.**
