@@ -39,7 +39,7 @@ Every answer maps to a key in the config JSON (see `references/config-schema.md`
 1. **Dashboard, report, or both?** → `artifact`
 2. **Which vulnerability data — active only, or everything?** → `vuln_data`
    (`active` adds `pluginType=active` globally; `all` includes passive/other.)
-3. **Data freshness — Last Day / Week / Month / Quarter (90d) / all data?** → `data_freshness`
+3. **Data freshness — Last Day / Week / Month / Quarter (90d) / Year (365d) / all data?** → `data_freshness`
 4. **Which severities to track — Critical / High / Medium / Low?** → `severities`
    (**Never include Info** — Info findings are scan metadata, not vulnerabilities.)
 5. **SLAs defined?** If yes, days for Critical/High/Medium/Low. → `sla`

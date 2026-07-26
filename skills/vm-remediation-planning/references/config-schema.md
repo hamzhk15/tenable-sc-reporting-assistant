@@ -7,7 +7,7 @@ optional; defaults in **bold**.
 |-----|------|------------------|--------|
 | `artifact` | string | `dashboard` \| `report` \| **`both`** | Which file(s) to produce. |
 | `vuln_data` | string | **`active`** \| `all` | `active` adds `pluginType=active` to every query; `all` includes passive/other. |
-| `data_freshness` | string | `day` \| `week` \| `month` \| `quarter` \| **`all`** | Adds a global `lastSeen` window (`quarter`=90d; skipped on cells that already key off `lastSeen`). |
+| `data_freshness` | string | `day` \| `week` \| `month` \| `quarter` \| `year` \| **`all`** | Adds a global `lastSeen` window (`quarter`=90d, `year`=365d; skipped on cells that already key off `lastSeen`). |
 | `severities` | array | subset of `critical,high,medium,low`; default **all four** | Severities tracked in every widget. **Info is always dropped.** |
 | `sla` | object \| null | `{"critical":7,"high":30,"medium":60,"low":90}` | Remediation SLA days per severity. Embedded in descriptions; drives SLA labels. |
 | `group_remediation_by` | string | `assets` \| **`findings`** | Report Detailed-Remediation chapter: by host, or by remediation solution. (`findings` ≡ by remediation.) |
