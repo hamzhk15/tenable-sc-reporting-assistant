@@ -14,9 +14,12 @@ optional; defaults in **bold**.
 | `repository_ids` | array \| null | e.g. `[1,3]` | Adds global `repositoryIDs` filter. |
 | `asset_group_ids` | array \| null | e.g. `[10,11]` | Adds `assetID` scoping. **2–10 groups** enables the By-Asset-Group matrix. |
 | `asset_group_labels` | object | `{"10":"Servers"}` | Optional display names for the group rows. |
+| `detail_enabled` | bool | **true** | Report only: include the Detailed Remediation chapter at all. `false` omits it. |
+| `detail_max` | int \| `"all"` | **50** | Report only: records the Detailed iterator expands. `10`/`20`/`50`/`100` or `"all"` (uncapped). |
 | `detail_exploitable_only` | bool | **false** | Report only: limit Detailed section to `exploitAvailable=true`. |
 | `detail_critical_only` | bool | **false** | Report only: limit Detailed section to Critical. |
-| `detail_max` | int | **50** | Max rows the Detailed iterator expands. |
+| `top_hosts_max` | int \| `"all"` | **20** | Report only: rows in "Most Vulnerable Hosts". `10`/`20`/`50`/`100` or `"all"`. |
+| `top_remediation_max` | int \| `"all"` | **10** | Report only: rows in "Top Remediation Opportunities". `10`/`20`/`50`/`100` or `"all"`. |
 | `title_prefix` | string | **`VM Remediation Planning`** | Filename + title prefix. |
 
 ## Example
@@ -32,8 +35,12 @@ optional; defaults in **bold**.
   "repository_ids": [1, 3],
   "asset_group_ids": [10, 11, 12],
   "asset_group_labels": {"10": "Servers", "11": "Workstations", "12": "DMZ"},
+  "detail_enabled": true,
+  "detail_max": 50,
   "detail_exploitable_only": true,
   "detail_critical_only": false,
+  "top_hosts_max": 20,
+  "top_remediation_max": 10,
   "title_prefix": "VM Remediation Planning"
 }
 ```

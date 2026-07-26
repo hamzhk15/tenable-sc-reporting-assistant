@@ -19,14 +19,17 @@ via API keys, talking directly to the SC REST API (no third-party dependencies).
 - Understanding Risk – Remediation Opportunities (top 10 table)
 
 **Report** (PDF template)
-- About, Vulnerability Overview (trend + severity), Understanding Risk (top-10
-  remediation + top-20 hosts)
-- Detailed Remediation — grouped **by vulnerability** (each vuln → affected hosts
-  + remediation details) or **by host** (each host → its remediations + its vulns)
+- About, Vulnerability Overview (trend + severity), Understanding Risk
+  (remediation opportunities + most vulnerable hosts — record counts configurable)
+- Detailed Remediation (optional; configurable record count) — grouped
+  **by vulnerability** (each vuln → affected hosts + remediation details) or
+  **by host** (each host → its remediations + its vulns)
 
 The generator asks about artifact type, active-vs-all data, data freshness,
 severities, SLAs, remediation grouping, repository filter, asset-group filter,
-and (for reports) exploitable-only / critical-only detail scoping.
+and (for reports) whether to include the Detailed Remediation section, the
+record counts for the detailed / most-vulnerable-hosts / top-remediation
+sections, and exploitable-only / critical-only detail scoping.
 
 ## Repository layout
 

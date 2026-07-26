@@ -31,8 +31,9 @@ dashboard, a report, or both, and can upload them to a SC console with API keys.
 
 **Report** (`<report>`, type pdf, scVersion 6.6.0): About; Vulnerability
 Overview (trend + severity pie); SLA Compliance (when SLAs are defined);
-Understanding Risk (By-Severity matrix, By-VPR matrix, top-10 remediation,
-top-20 hosts — in that order); and a **Detailed Remediation** chapter that
+Understanding Risk (By-Severity matrix, By-VPR matrix, top remediation
+opportunities, most vulnerable hosts — counts configurable, in that order); and
+an optional **Detailed Remediation** chapter (configurable record count) that
 iterates either:
 - **by vulnerability** — each vulnerability → its affected hosts + remediation
   details; or
@@ -70,8 +71,13 @@ Every answer maps to a key in the config JSON (see `references/config-schema.md`
 > repository or asset-group IDs, you MUST stop and collect the actual IDs before
 > generating — either by asking them, or by listing them from their console with
 > `list_scope.py` (below). Generating with made-up IDs is a failed run.
-9. *(Report only)* **Detailed section: exploitable vulns only?** → `detail_exploitable_only`
-10. *(Report only)* **Detailed section: critical vulns only?** → `detail_critical_only`
+9. *(Report only)* **Include the Detailed Remediation section?** → `detail_enabled`
+   If yes:
+   - **How many records — 10 / 20 / 50 / 100 / all?** → `detail_max`
+   - **Detailed section: exploitable vulns only?** → `detail_exploitable_only`
+   - **Detailed section: critical vulns only?** → `detail_critical_only`
+10. *(Report only)* **Most Vulnerable Hosts — how many: 10 / 20 / 50 / 100 / all?** → `top_hosts_max`
+11. *(Report only)* **Top Remediation Opportunities — how many: 10 / 20 / 50 / 100 / all?** → `top_remediation_max`
 
 If the user wants to filter by repository or asset group but doesn't know the
 IDs, offer to list them from their console (requires the SC URL + API keys):

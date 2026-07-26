@@ -8,7 +8,11 @@
   "repository_ids": null,
   "asset_group_ids": null,
   "asset_group_labels": {},
+  "detail_enabled": true,
+  "detail_max": 50,
   "detail_exploitable_only": false,
   "detail_critical_only": false,
+  "top_hosts_max": 20,
+  "top_remediation_max": 10,
   "title_prefix": "VM Remediation Planning"
 }

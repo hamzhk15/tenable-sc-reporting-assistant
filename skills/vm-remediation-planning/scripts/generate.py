@@ -27,8 +27,12 @@ Config schema (all keys optional unless noted; sane defaults applied):
     "repository_ids": [1,2] | null,
     "asset_group_ids": [10,11] | null,
     "asset_group_labels": {"10":"Servers"},          # optional display names
+    "detail_enabled": true,                          # report only
+    "detail_max": 50 | "all",                        # report only
     "detail_exploitable_only": false,                # report only
     "detail_critical_only": false,                   # report only
+    "top_hosts_max": 20 | "all",                     # report only
+    "top_remediation_max": 10 | "all",               # report only
     "title_prefix": "VM Remediation Planning"
   }
 """
@@ -52,6 +56,28 @@ FRESHNESS_WINDOW = {"day": "0:1", "week": "0:7", "month": "0:30",
 FRESHNESS_LABEL = {"day": "Last Day", "week": "Last Week",
                    "month": "Last Month", "quarter": "Last Quarter (90d)",
                    "year": "Last Year (365d)", "all": "All data"}
+
+# "All" for a record-count question. SC has no unbounded table, so "all" maps
+# to a large data-point cap while the title reads "All".
+_ALL_CAP = 100000
+
+
+def _count(value, default):
+    """Normalize a record-count answer (10/20/50/100 or 'all') to (cap, label).
+
+    label is the number as a string, or 'All' for the uncapped choice.
+    """
+    if value is None:
+        value = default
+    if isinstance(value, str) and value.strip().lower() in ("all", "0"):
+        return _ALL_CAP, "All"
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        n = default
+    if n <= 0:
+        return _ALL_CAP, "All"
+    return n, str(n)
 
 
 # ---------------------------------------------------------------------------
@@ -86,7 +112,14 @@ def normalize(raw):
 
     cfg["detail_exploitable_only"] = bool(raw.get("detail_exploitable_only", False))
     cfg["detail_critical_only"] = bool(raw.get("detail_critical_only", False))
-    cfg["detail_max"] = int(raw.get("detail_max", 50))
+    # Report-only record counts. Each accepts 10/20/50/100 or "all"; "all" is
+    # stored as a large cap plus an "All" display label used in the title.
+    cfg["detail_enabled"] = bool(raw.get("detail_enabled", True))
+    cfg["detail_max"], cfg["detail_max_label"] = _count(raw.get("detail_max"), 50)
+    cfg["top_hosts_max"], cfg["top_hosts_label"] = _count(
+        raw.get("top_hosts_max"), 20)
+    cfg["top_remediation_max"], cfg["top_remediation_label"] = _count(
+        raw.get("top_remediation_max"), 10)
     cfg["title_prefix"] = raw.get("title_prefix", "VM Remediation Planning")
 
     # Scope label (human-readable, embedded in component descriptions).
@@ -209,10 +242,21 @@ def interview():
                                "Asset Group %s" % gid)
         raw["asset_group_labels"] = labels
     if raw["artifact"] in ("report", "both"):
-        raw["detail_exploitable_only"] = _ask_yn(
-            "[9] Detailed section: exploitable vulns only?", False)
-        raw["detail_critical_only"] = _ask_yn(
-            "[10] Detailed section: critical vulns only?", False)
+        raw["detail_enabled"] = _ask_yn(
+            "[9] Include the Detailed Remediation section?", True)
+        if raw["detail_enabled"]:
+            raw["detail_max"] = _ask(
+                "      How many records? 10 / 20 / 50 / 100 / all", "50").lower()
+            raw["detail_exploitable_only"] = _ask_yn(
+                "      Detailed section: exploitable vulns only?", False)
+            raw["detail_critical_only"] = _ask_yn(
+                "      Detailed section: critical vulns only?", False)
+        raw["top_hosts_max"] = _ask(
+            "[10] Most Vulnerable Hosts: how many? 10 / 20 / 50 / 100 / all",
+            "20").lower()
+        raw["top_remediation_max"] = _ask(
+            "[11] Top Remediation Opportunities: how many? "
+            "10 / 20 / 50 / 100 / all", "10").lower()
     return raw
 
 

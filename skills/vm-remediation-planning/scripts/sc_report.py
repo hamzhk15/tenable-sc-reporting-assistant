@@ -309,6 +309,14 @@ def build_chapters(cfg, gf):
     sevs = cfg["severities"]
     sev_csv = ",".join(sevs)
     scope = cfg["scope_label"]
+    # Report-only record counts (cap + display label; "All" for uncapped).
+    rem_max = cfg.get("top_remediation_max", 10)
+    rem_label = cfg.get("top_remediation_label", str(rem_max))
+    hosts_max = cfg.get("top_hosts_max", 20)
+    hosts_label = cfg.get("top_hosts_label", str(hosts_max))
+    # "Top 20 ..." for a numeric count, but just "All ..." for the uncapped one.
+    rem_title = ("All" if rem_label == "All" else "Top %s" % rem_label)
+    hosts_title = ("All" if hosts_label == "All" else "Top %s" % hosts_label)
     chapters = []
 
     # ---- Chapter: About ---------------------------------------------------
@@ -403,25 +411,34 @@ def build_chapters(cfg, gf):
         ]),
         group("3.3", [
             paragraph("3.3.1",
-                "Top 10 remediation opportunities ranked by risk reduction. "
-                "Addressing these solutions removes the most risk per action."),
-            table_component("Top 10 Remediation Opportunities",
+                "%s remediation opportunities ranked by risk reduction. "
+                "Addressing these solutions removes the most risk per action."
+                % ("All" if rem_label == "All" else "Top %s" % rem_label)),
+            table_component("%s Remediation Opportunities" % rem_title,
                             ["solution", "scorePctg", "hostTotal", "total"],
                             "sumremediation", gf([flt("severity", sev_csv)]),
-                            data_points=10, sort_col="scorePctg",
+                            data_points=rem_max, sort_col="scorePctg",
                             sort_dir="desc"),
         ]),
         group("3.4", [
             paragraph("3.4.1",
-                "Most vulnerable hosts, ranked by weighted severity score."),
-            table_component("Top 20 Most Vulnerable Hosts",
+                "Most vulnerable hosts (%s), ranked by weighted severity "
+                "score." % ("all" if hosts_label == "All"
+                            else "top %s" % hosts_label)),
+            table_component("%s Most Vulnerable Hosts" % hosts_title,
                             ["ip", "dnsName", "osCPE", "total", "score",
                              "vulnBar"], "sumip",
-                            gf([flt("severity", sev_csv)]), data_points=20),
+                            gf([flt("severity", sev_csv)]),
+                            data_points=hosts_max),
         ]),
     ]))
 
-    # ---- Chapter: Detailed Remediation (grouping-dependent) --------------
+    # ---- Chapter: Detailed Remediation (grouping-dependent, optional) -----
+    # Skipped entirely when the user opts out of the detailed section.
+    if not cfg.get("detail_enabled", True):
+        return chapters
+
+    detail_max = cfg.get("detail_max", 50)
     detail_filters = gf([flt("severity", sev_csv)])
     if cfg.get("detail_exploitable_only"):
         detail_filters = detail_filters + [flt("exploitAvailable", "true")]
@@ -442,7 +459,7 @@ def build_chapters(cfg, gf):
                                 "vulndetails", detail_filters, data_points=100,
                                 sort_col="severity", sort_dir="desc"),
             ],
-            data_points=cfg.get("detail_max", 50),
+            data_points=detail_max,
             columns=["pluginID", "pluginName", "severity", "total",
                      "hostTotal"],
             sort_col="severity")
@@ -472,7 +489,7 @@ def build_chapters(cfg, gf):
                                 "vulndetails", detail_filters, data_points=100,
                                 sort_col="severity", sort_dir="desc"),
             ],
-            data_points=cfg.get("detail_max", 25),
+            data_points=detail_max,
             columns=["ip", "dnsName", "osCPE", "total", "score"],
             sort_col="score")
         chapters.append(chapter("Detailed Remediation (by Host)", [
