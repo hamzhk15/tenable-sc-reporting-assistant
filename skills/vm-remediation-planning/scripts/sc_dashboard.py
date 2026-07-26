@@ -136,7 +136,12 @@ def write_dashboard(filename, name, description, components, num_columns=2):
               "\t\t\t<type>%s</type>" % c["kind"],
               "\t\t\t<column>%d</column>" % c["column"],
               "\t\t\t<order>%d</order>" % c["order"]]
-        if c["kind"] == "table":
+        # Non-matrix components (table, lineChart, pieChart) require a
+        # top-level <schedule>; matrices embed the schedule per cluster.
+        # The REST /dashboard/import validates this strictly (the UI import
+        # is lenient), rejecting an empty/missing schedule as "Invalid
+        # schedule type".
+        if c["kind"] != "matrix":
             p.append("\t\t\t<schedule>FREQ=DAILY;INTERVAL=1</schedule>")
         p += ["\t\t\t<definition>%s</definition>" % b64(c["definition"]),
               "\t\t</component>"]

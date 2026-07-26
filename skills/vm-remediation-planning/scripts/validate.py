@@ -102,8 +102,12 @@ def _check_schedules(raw, problems, label):
         return
     for comp in re.findall(r"<component>(.*?)</component>", raw, re.S):
         ct = re.search(r"<componentType>(.*?)</componentType>", comp)
-        if ct and ct.group(1) == "table" and "<schedule>" not in comp:
-            problems.append("%s: table component missing <schedule>" % label)
+        # Every non-matrix component (table, lineChart, pieChart) needs a
+        # top-level <schedule>; matrices embed it per cluster. REST import
+        # rejects a missing one as "Invalid schedule type".
+        if ct and ct.group(1) != "matrix" and "<schedule>" not in comp:
+            problems.append("%s: %s component missing <schedule>"
+                            % (label, ct.group(1)))
 
 
 def validate_file(path):
