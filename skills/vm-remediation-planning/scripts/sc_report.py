@@ -15,8 +15,18 @@ A report definition is a tree:
 Sections mirror the dashboard, plus a "Detailed Remediation" chapter that
 iterates either by remediation solution or by host, per the user's choice.
 """
-from sc_common import (b64, flt, CRIT, HIGH, MED, LOW, SEV_LABEL)
+from sc_common import (b64, flt, C_NEUTRAL, C_GREEN, C_RED, CRIT, HIGH, MED,
+                       LOW, SEV_LABEL)
 from xml.sax.saxutils import escape
+
+# Default SLA (days-to-remediate) per severity, used only if the user enabled
+# SLAs but didn't override a given severity.
+DEFAULT_SLA = {CRIT: 7, HIGH: 30, MED: 60, LOW: 90}
+
+
+def sla_days(cfg, sev_code):
+    sla = cfg.get("sla") or {}
+    return sla.get(SEV_LABEL[sev_code].lower(), DEFAULT_SLA.get(sev_code))
 
 # ---------------------------------------------------------------------------
 # location ids -- SC uses short, per-element opaque strings. They need only be
@@ -74,6 +84,46 @@ def table_component(name, columns, tool, filters, data_points=10,
 
 def matrix_component(name, defn):
     return component(name, "matrix", defn)
+
+
+def _report_cell(seq, tool, filters, colors, out_text="vulnCount",
+                 source="cumulative"):
+    # Report-context matrices (unlike dashboard ones) require an explicit
+    # id/dataID on BOTH the cell and its conditional -- REST import otherwise
+    # fails with "NOT NULL constraint failed: DataConditional.dataID". The
+    # cell sequence is a stable, unique value that links the two.
+    return {
+        "id": str(seq), "dataID": str(seq),
+        "sequence": str(seq),
+        "dataSource": _report_ds(tool, filters, source=source),
+        "baseDataSource": [],
+        "conditionals": [{
+            "id": str(seq), "dataID": str(seq),
+            "conditionalName": "default", "conditionalOperator": "=",
+            "conditionalValue": "", "outputType": "textCount",
+            "outputColors": colors, "outputText": out_text,
+        }],
+    }
+
+
+def report_matrix(name, row_labels, col_labels, cell_specs, base_cluster=2000):
+    """Report-context matrix. cell_specs row-major: (tool, filters, colors)."""
+    rows = len(row_labels)
+    cells = []
+    for seq, spec in enumerate(cell_specs, start=1):
+        cells.append(_report_cell(seq, spec[0], spec[1], spec[2]))
+    clusters = [{"id": str(base_cluster + i), "strips": str(i + 1),
+                 "schedule": "FREQ=DAILY;INTERVAL=1"} for i in range(rows)]
+    defn = {
+        "styleID": "-1", "cells": cells, "rows": str(rows),
+        "columns": str(len(col_labels)), "title": name, "stripType": "column",
+        "rowLabels":    [{"sequence": str(i + 1), "text": t}
+                         for i, t in enumerate(row_labels)],
+        "columnLabels": [{"sequence": str(i + 1), "text": t}
+                         for i, t in enumerate(col_labels)],
+        "clusters": clusters,
+    }
+    return matrix_component(name, defn)
 
 
 def piechart_component(name, tool, filters, label_col="severity"):
@@ -223,6 +273,30 @@ def build_chapters(cfg, gf):
                             gf([flt("severity", sev_csv)]), data_points=20),
         ]),
     ]))
+
+    # ---- Chapter: SLA Compliance (only when SLAs are defined) ------------
+    if cfg.get("sla"):
+        row_labels, specs = [], []
+        for s in sevs:
+            days = sla_days(cfg, s)
+            row_labels.append("%s (%d Days)" % (SEV_LABEL[s], days))
+            base = [flt("severity", s)]
+            specs.append(("sumid", gf(base), C_NEUTRAL))
+            specs.append(("sumid", gf(base + [flt("firstSeen", "0:%d" % days)]),
+                          C_GREEN))
+            specs.append(("sumid", gf(base + [flt("firstSeen", "%d:all" % days)]),
+                          C_RED))
+        chapters.append(chapter("SLA Compliance", [
+            group("3b.1", [
+                paragraph("3b.1.1",
+                    "Unmitigated findings measured against remediation SLAs. "
+                    "'Within SLA' counts findings first seen inside the SLA "
+                    "window; 'Overdue' counts findings older than it."),
+                report_matrix("Vulnerability SLA Compliance", row_labels,
+                              ["Total Unmitigated", "Within SLA", "Overdue"],
+                              specs),
+            ]),
+        ]))
 
     # ---- Chapter: Detailed Remediation (grouping-dependent) --------------
     detail_filters = gf([flt("severity", sev_csv)])

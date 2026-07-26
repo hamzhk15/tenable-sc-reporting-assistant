@@ -19,6 +19,17 @@ from sc_common import (b64, flt, C_NEUTRAL, C_GREEN, C_RED, C_AMBER, C_BLUE,
                        C_ORANGE, CRIT, HIGH, MED, LOW, SEV_LABEL)
 from xml.sax.saxutils import escape
 
+# Default SLA (days-to-remediate) per severity, used only if the user enabled
+# SLAs but didn't override a given severity.
+DEFAULT_SLA = {CRIT: 7, HIGH: 30, MED: 60, LOW: 90}
+
+
+def sla_days(cfg, sev_code):
+    """Days-to-remediate for a severity, from cfg['sla'] (keyed by name)."""
+    sla = cfg.get("sla") or {}
+    name = SEV_LABEL[sev_code].lower()
+    return sla.get(name, DEFAULT_SLA.get(sev_code))
+
 # Detection/mitigation windows used by the Scanning History matrix.
 WINDOWS = [("Last Day", "0:1"), ("Last Week", "0:7"), ("Last Month", "0:30"),
            ("Last Quarter", "0:90"), ("Last Year", "0:365")]
@@ -272,6 +283,31 @@ def build_components(cfg, gf):
         "matrix", 2,
         matrix("Understanding Risk - By Severity",
                row_labels, RISK_COLUMNS, specs))
+
+    # --- 4b. Vulnerability SLA Compliance (matrix) -------------------------
+    # Only when the user defined SLAs. Per severity: unmitigated findings split
+    # by age (firstSeen) against that severity's SLA -> Within SLA vs Overdue.
+    if cfg.get("sla"):
+        row_labels, specs = [], []
+        for s in sevs:
+            days = sla_days(cfg, s)
+            row_labels.append("%s (%d Days)" % (SEV_LABEL[s], days))
+            base = [flt("severity", s)]
+            specs.append(("sumid", gf(base), C_NEUTRAL))
+            # Within SLA: first seen within the SLA window (age 0..days).
+            specs.append(("sumid", gf(base + [flt("firstSeen", "0:%d" % days)]),
+                          C_GREEN))
+            # Overdue: first seen older than the SLA window (age days..all).
+            specs.append(("sumid", gf(base + [flt("firstSeen", "%d:all" % days)]),
+                          C_RED))
+        add("Vulnerability SLA Compliance",
+            "Unmitigated findings per severity measured against remediation "
+            "SLAs: total, within SLA (first seen within the SLA window), and "
+            "overdue (older than the SLA window). Scope: %s." % scope,
+            "matrix", 1,
+            matrix("Vulnerability SLA Compliance",
+                   row_labels,
+                   ["Total Unmitigated", "Within SLA", "Overdue"], specs))
 
     # --- 5. Understanding Risk - Remediation Opportunities (table) ---------
     add("Understanding Risk - Remediation Opportunities (Top 10)",
