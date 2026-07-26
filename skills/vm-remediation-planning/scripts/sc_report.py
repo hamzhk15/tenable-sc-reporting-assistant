@@ -112,52 +112,108 @@ def table_component(name, columns, tool, filters, data_points=10,
     return component(name, "table", defn)
 
 
-def matrix_component(name, defn):
-    return component(name, "matrix", defn)
+# A report matrix cell's dataSource is a SIMPLE 6-key map -- NOT the dashboard
+# datasource. It carries no styleID / iteratorID / resultStyle / top-level
+# context, and querySourceView is "" (empty), not "all". This is the exact
+# shape used by Tenable's own shipped report matrices ("Track Mitigation
+# Progress"); anything richer renders the matrix with header-only, no values.
+_MATRIX_TS = 1750000000        # fixed timestamp component of query names
+_matrix_id = [22]              # per-matrix component id, mirrors reference "23"
+def _next_matrix_id():
+    _matrix_id[0] += 1
+    return _matrix_id[0]
 
 
-def _report_cell(seq, tool, filters, colors, out_text="vulnCount",
-                 source="cumulative"):
-    # Report-context matrices (unlike dashboard ones) require an explicit
-    # id/dataID on BOTH the cell and its conditional -- REST import otherwise
-    # fails with "NOT NULL constraint failed: DataConditional.dataID". The
-    # cell sequence is a stable, unique value that links the two.
+def _matrix_query_name(comp_id, seq, base=False):
+    # _<ts>.0.<serial>_matrix[_base]_<compId>_<seq>_1_1_1
+    kind = "matrix_base" if base else "matrix"
+    serial = comp_id * 100000 + seq * (2 if base else 1)
+    return "_%d.0.%d_%s_%d_%d_1_1_1" % (_MATRIX_TS, serial, kind, comp_id, seq)
+
+
+def _matrix_ds(tool, filters, source, comp_id, seq, base=False):
     return {
-        "id": str(seq), "dataID": str(seq),
-        "sequence": str(seq),
-        "dataSource": _report_ds(tool, filters, source=source),
-        "baseDataSource": [],
-        "conditionals": [{
-            "id": str(seq), "dataID": str(seq),
+        "querySourceType": source, "querySourceID": "", "querySourceView": "",
+        "sortColumn": "", "sortDirection": "",
+        "query": {
+            "name": _matrix_query_name(comp_id, seq, base=base),
+            "description": "", "tool": tool, "type": "vuln", "tags": "",
+            "context": "report", "browseColumns": "", "browseSortColumn": "",
+            "browseSortDirection": "ASC", "ownerGID": "0", "targetGID": "-1",
+            "filters": {i: f for i, f in enumerate(filters)}, "groups": {},
+        },
+    }
+
+
+def _report_cell(comp_id, seq, row, col, tool, filters, colors,
+                 out_text="vulnCount", source="cumulative"):
+    """One report-matrix cell, shaped exactly like Tenable's shipped reports.
+
+    Integer row/column (1-based) + subtype + a simple dataSource; integer-keyed
+    conditional ending in `order`. No id/dataID (the reference has none).
+    """
+    cell = {
+        "row": row, "column": col, "subtype": source,
+        "dataSource": _matrix_ds(tool, filters, source, comp_id, seq),
+        "conditionals": {0: {
             "conditionalName": "default", "conditionalOperator": "=",
             "conditionalValue": "", "outputType": "textCount",
-            "outputColors": colors, "outputText": out_text,
-        }],
+            "outputText": out_text, "outputColors": colors, "order": 1,
+        }},
+        "sequence": seq,
     }
+    return cell
 
 
-def report_matrix(name, row_labels, col_labels, cell_specs, base_cluster=2000):
-    """Report-context matrix. cell_specs row-major:
-    (tool, filters, colors[, out_text[, source]])."""
-    rows = len(row_labels)
-    cells = []
-    for seq, spec in enumerate(cell_specs, start=1):
+def report_matrix(name, row_labels, col_labels, cell_specs):
+    """Report-context matrix component. cell_specs row-major:
+    (tool, filters, colors[, out_text[, source]]).
+
+    Emits the full component wrapper Tenable's own report matrices carry (a
+    now-type schedule, ical per-row clusters, integer-keyed arrays) -- a bare
+    {name,tag,componentType,definition} wrapper (fine for tables/charts) leaves
+    a report matrix rendering header-only with no data.
+    """
+    rows, ncols = len(row_labels), len(col_labels)
+    comp_id = _next_matrix_id()
+    cells = {}
+    for idx, spec in enumerate(cell_specs):
+        seq = idx + 1
+        row = idx // ncols + 1
+        col = idx % ncols + 1
         out_text = spec[3] if len(spec) > 3 else "vulnCount"
         source = spec[4] if len(spec) > 4 else "cumulative"
-        cells.append(_report_cell(seq, spec[0], spec[1], spec[2],
-                                  out_text=out_text, source=source))
-    clusters = [{"id": str(base_cluster + i), "strips": str(i + 1),
-                 "schedule": "FREQ=DAILY;INTERVAL=1"} for i in range(rows)]
+        cells[idx] = _report_cell(comp_id, seq, row, col, spec[0], spec[1],
+                                  spec[2], out_text=out_text, source=source)
+    # With stripType="column" there is ONE cluster per COLUMN strip (not per
+    # row): Tenable's shipped 4x5 matrix carries 5 clusters (strips 1..5). SC
+    # rebuilds clusters per-column strip on Edit/Save; emitting one-per-row
+    # nulls out strips -> "NOT NULL constraint failed: MatrixCluster.strips".
+    # Clusters use a VALID ical schedule (matching the reference), NOT the
+    # component-level "now" placeholder (whose "Invalid date" fails reparse).
+    clusters = {i: {"schedule": {
+                        "start": "TZID=America/New_York:20170927T005500",
+                        "repeatRule": "FREQ=WEEKLY;INTERVAL=1;BYDAY=SA",
+                        "type": "ical", "enabled": "true"},
+                    "strips": i + 1} for i in range(ncols)}
     defn = {
-        "styleID": "-1", "cells": cells, "rows": str(rows),
-        "columns": str(len(col_labels)), "title": name, "stripType": "column",
-        "rowLabels":    [{"sequence": str(i + 1), "text": t}
-                         for i, t in enumerate(row_labels)],
-        "columnLabels": [{"sequence": str(i + 1), "text": t}
-                         for i, t in enumerate(col_labels)],
+        "rows": str(rows), "columns": str(ncols), "title": name,
+        "stripType": "column", "cells": cells,
+        "rowLabels":    {i: {"text": t} for i, t in enumerate(row_labels)},
+        "columnLabels": {i: {"text": t} for i, t in enumerate(col_labels)},
         "clusters": clusters,
     }
-    return matrix_component(name, defn)
+    return {
+        "name": name, "description": "", "context": "", "status": -1,
+        "createdTime": 0, "modifiedTime": 0, "groups": {}, "type": "component",
+        "column": 1, "order": "0", "running": False, "lastUpdatedTime": 0,
+        "lastCompletedUpdateTime": 0,
+        "schedule": {"start": "TZID=:Invalid dateInvalid date",
+                     "repeatRule": "FREQ=NOW;INTERVAL=", "type": "now",
+                     "enabled": "true"},
+        "tag": "component", "location": _next_loc(),
+        "componentType": "matrix", "definition": defn,
+    }
 
 
 def piechart_component(name, tool, filters, label_col="severity"):
