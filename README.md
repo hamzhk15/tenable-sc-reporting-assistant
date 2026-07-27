@@ -112,6 +112,25 @@ checks base64/round-trip integrity, invisible `fg==bg` colors, missing table
 schedules, `sumip` host-count mistakes, and accidental Info-severity filters.
 See [`references/sc-xml-format.md`](references/sc-xml-format.md).
 
+## Known limitations
+
+- **First-load "No Data" widgets.** After import, some Tenable SC widgets don't
+  run their query until the definition is re-committed once (Edit → toggle a
+  filter → Save). This is known SC behavior, not a bad template — respecting the
+  cluster-count rule minimizes it, but it can still occur.
+- **Components are catalog-bound.** The skill only builds the tested component
+  recipes in [`references/component-catalog.md`](references/component-catalog.md)
+  (matrices, tables, line/pie charts, iterators, CSV exports). A request that
+  needs a component outside the catalog requires a new tested builder first — it
+  is never satisfied by hand-written XML.
+- **SC version scope.** XML is generated for the versions noted in
+  [`references/sc-xml-format.md`](references/sc-xml-format.md) (dashboards
+  scVersion 6.2.0, reports 6.6.0). Other SC versions are untested.
+- **Upload targets self-managed Tenable SC (SecurityCenter)** via its REST API;
+  it is not for Tenable Vulnerability Management (Tenable.io) or Tenable One.
+- **You provide the scope IDs.** Repository and asset-group IDs must come from
+  your console (`list_scope.py` can list them); the skill never invents IDs.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
