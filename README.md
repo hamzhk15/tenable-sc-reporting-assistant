@@ -22,8 +22,8 @@ via API keys, talking directly to the SC REST API (no third-party dependencies).
 - About, Vulnerability Overview (trend + severity), Understanding Risk
   (remediation opportunities + most vulnerable hosts — record counts configurable)
 - Detailed Remediation (optional; configurable record count) — grouped
-  **by vulnerability** (each vuln → affected hosts + remediation details) or
-  **by host** (each host → its remediations + its vulns)
+  **by vulnerability** (each vuln → the hosts it affects) or
+  **by host** (each host → the remediations it needs)
 
 **CSV export** (optional) — a flat, analysis-ready vulnerability list (CSV
 report, ~37 columns) generated alongside the PDF using the same

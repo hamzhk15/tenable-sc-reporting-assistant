@@ -35,9 +35,12 @@ Understanding Risk (By-Severity matrix, By-VPR matrix, top remediation
 opportunities, most vulnerable hosts — counts configurable, in that order); and
 an optional **Detailed Remediation** chapter (configurable record count) that
 iterates either:
-- **by vulnerability** — each vulnerability → its affected hosts + remediation
-  details; or
-- **by host** — each host → its remediations + its vulnerabilities.
+- **by vulnerability** — each vulnerability → the hosts it affects; or
+- **by host** — each host → the remediations it needs.
+
+(Only the complementary breakdown is shown inside the loop — a per-host vuln
+dump under a by-host grouping, or per-vulnerability details under a
+by-vulnerability grouping, would just restate the row and is omitted.)
 
 Optionally, a companion **CSV report** (`<report>`, type csv, styleFamily 5): a
 flat, analysis-ready vulnerability export (list-style `vulndetails`, ~37

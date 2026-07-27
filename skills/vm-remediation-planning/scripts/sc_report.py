@@ -356,12 +356,10 @@ def write_csv_report(filename, name, description, filters,
 # Detailed-remediation column sets
 # ---------------------------------------------------------------------------
 # For the "by vulnerability" iterator: each vulnerability row expands into the
-# affected hosts and its full details/solution.
-_VULN_COLS = ["pluginID", "pluginName", "severity", "exploitAvailable",
-              "cve", "patchPublished", "solution"]
+# hosts it affects (the vulnerability's own details would just restate the row).
 _HOST_COLS = ["ip", "dnsName", "osCPE", "total", "score"]
-# For the "by host" iterator: each host row expands into its remediations and
-# the vulnerabilities present on it.
+# For the "by host" iterator: each host row expands into the remediations it
+# needs (a full per-host vulnerability dump would just be noise).
 _REMEDIATION_COLS = ["solution", "scorePctg", "total", "hostTotal"]
 
 
@@ -506,16 +504,15 @@ def build_chapters(cfg, gf):
 
     if cfg["group_remediation_by"] == "vulnerability":
         # One block per vulnerability: the hosts it affects + its full details.
+        # Grouped by vulnerability, so the per-vulnerability detail table would
+        # just restate the row itself — only the affected-hosts breakdown adds
+        # information inside the loop.
         it = iterator(
             "Per-Vulnerability Detail", "sumid", detail_flt,
             child_components=[
                 paragraph("4.2.2", "Hosts affected by this vulnerability:"),
                 table_component("Affected Hosts", _HOST_COLS, "sumip",
                                 detail_flt, data_points=100),
-                paragraph("4.2.3", "Vulnerability details and remediation:"),
-                table_component("Vulnerability Details", _VULN_COLS,
-                                "vulndetails", detail_flt, data_points=100,
-                                sort_col="severity", sort_dir="desc"),
             ],
             data_points=detail_max,
             columns=["pluginID", "pluginName", "severity", "total",
@@ -534,6 +531,8 @@ def build_chapters(cfg, gf):
             ]),
         ]))
     else:  # group by host
+        # Grouped by host, so a full per-host vulnerability dump is noise — the
+        # remediations table already tells the operator what to fix on the host.
         it = iterator(
             "Per-Host Detail", "sumip", detail_flt,
             child_components=[
@@ -542,10 +541,6 @@ def build_chapters(cfg, gf):
                                 "sumremediation", detail_flt,
                                 data_points=100, sort_col="scorePctg",
                                 sort_dir="desc"),
-                paragraph("4.2.3", "Vulnerabilities on this host:"),
-                table_component("Host Vulnerabilities", _VULN_COLS,
-                                "vulndetails", detail_flt, data_points=100,
-                                sort_col="severity", sort_dir="desc"),
             ],
             data_points=detail_max,
             columns=["ip", "dnsName", "osCPE", "total", "score"],
