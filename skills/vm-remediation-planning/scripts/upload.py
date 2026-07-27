@@ -26,10 +26,12 @@ Examples:
 import argparse
 import json
 import os
+import re
 import ssl
 import sys
 import urllib.request
 import uuid
+from xml.sax.saxutils import unescape
 
 
 def _keyheader(access, secret):
@@ -69,6 +71,21 @@ def upload_file(base, ctx, keyhdr, xml_path):
         sys.exit("File upload failed (HTTP %s): %s" % (status, text[:400]))
     token = json.loads(text)["response"]["filename"]
     return token
+
+
+def name_from_xml(xml_path):
+    """Return the definition's own <name> so the display name (with its scope
+    tag) survives import. The tag lives in <name>; deriving the name from the
+    filename would silently drop it. Falls back to the filename stem."""
+    try:
+        with open(xml_path, "r", encoding="utf-8") as f:
+            text = f.read()
+        m = re.search(r"<name>(.*?)</name>", text, re.S)
+        if m:
+            return unescape(m.group(1)).strip()
+    except (OSError, UnicodeDecodeError):
+        pass
+    return os.path.splitext(os.path.basename(xml_path))[0]
 
 
 def import_definition(base, ctx, keyhdr, endpoint, token, name, extra=None):
@@ -120,21 +137,21 @@ def main():
     print("Target: %s" % base)
     if args.dashboard:
         tok = upload_file(base, ctx, keyhdr, args.dashboard)
-        name = args.name or os.path.splitext(os.path.basename(args.dashboard))[0]
+        name = args.name or name_from_xml(args.dashboard)
         # SC's dashboard/import requires an explicit tab position ('order').
         r = import_definition(base, ctx, keyhdr, "/rest/dashboard/import", tok,
                               name, extra={"order": 0})
         print("  ✓ dashboard imported:", json.dumps(r.get("response", r))[:200])
     if args.report:
         tok = upload_file(base, ctx, keyhdr, args.report)
-        name = args.name or os.path.splitext(os.path.basename(args.report))[0]
+        name = args.name or name_from_xml(args.report)
         r = import_definition(base, ctx, keyhdr, "/rest/reportDefinition/import", tok, name)
         print("  ✓ report imported:", json.dumps(r.get("response", r))[:200])
     if args.csv:
         # CSV reports import through the same reportDefinition endpoint; the
         # report type/styleFamily inside the XML drives the export format.
         tok = upload_file(base, ctx, keyhdr, args.csv)
-        name = args.name or os.path.splitext(os.path.basename(args.csv))[0]
+        name = args.name or name_from_xml(args.csv)
         r = import_definition(base, ctx, keyhdr, "/rest/reportDefinition/import", tok, name)
         print("  ✓ csv report imported:", json.dumps(r.get("response", r))[:200])
 
