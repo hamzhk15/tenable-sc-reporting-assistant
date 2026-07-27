@@ -36,12 +36,15 @@ RISK_COLUMNS = [
 ]
 
 
-def _risk_row_specs(gf, scope_filter):
+def _risk_row_specs(gf, scope_filter, extra=None):
     """Six Understanding-Risk cells for one row (report context).
 
     Spec tuple: (tool, filters, colors, out_text, source).
+    extra is an optional list of additional base filters applied to every cell
+    in the row — e.g. the tracked-severity filter for the By-VPR matrix, so VPR
+    bands still respect the user's severity selection.
     """
-    base = [scope_filter]
+    base = [scope_filter] + list(extra or [])
     expl = base + [flt("exploitAvailable", "true")]
     expl_patch = expl + [flt("patchPublished", "30:all")]
     return [
@@ -445,13 +448,18 @@ def build_chapters(cfg, gf):
         sev_specs.extend(_risk_row_specs(gf, flt("severity", s)))
     sev_rows.append("Total (All Tracked)")
     sev_specs.extend(_risk_row_specs(gf, flt("severity", sev_csv)))
-    # By-VPR matrix rows: each VPR band plus a total row.
+    # By-VPR matrix rows: each VPR band plus a total row. Every band is still
+    # scoped to the tracked severities (same as By-Severity), otherwise the
+    # matrix would count severities the user excluded.
+    sev_scope = [flt("severity", sev_csv)]
     vpr_rows, vpr_specs = [], []
     for label, vpr in VPR_BANDS:
         vpr_rows.append(label)
-        vpr_specs.extend(_risk_row_specs(gf, flt("vprScore", vpr)))
+        vpr_specs.extend(_risk_row_specs(gf, flt("vprScore", vpr),
+                                         extra=sev_scope))
     vpr_rows.append("Total (All VPR)")
-    vpr_specs.extend(_risk_row_specs(gf, flt("vprScore", VPR_ALL)))
+    vpr_specs.extend(_risk_row_specs(gf, flt("vprScore", VPR_ALL),
+                                     extra=sev_scope))
     chapters.append(chapter("Understanding Risk", [
         group("3.1", [
             paragraph("3.1.1",
