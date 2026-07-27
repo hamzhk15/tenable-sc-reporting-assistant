@@ -138,7 +138,7 @@ can pick which IDs to put in `repository_ids` / `asset_group_ids`. In SC, an
 Write the answers to a `config.json` (schema in `references/config-schema.md`), then:
 
 ```bash
-cd skills/tenable-sc-reporting-assistant/scripts
+cd scripts
 python3 generate.py --config /path/to/config.json --out-dir /path/to/output
 ```
 
