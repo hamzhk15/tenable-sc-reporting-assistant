@@ -34,12 +34,26 @@ def sla_days(cfg, sev_code):
 WINDOWS = [("Last Day", "0:1"), ("Last Week", "0:7"), ("Last Month", "0:30"),
            ("Last Quarter", "0:90"), ("Last Year", "0:365")]
 
-# VPR (Vulnerability Priority Rating) bands, high->low. The label carries the
-# score range; the value is the vprScore filter range. "0.1-10" is the union
-# of all VPR-scored findings (used for the total row).
-VPR_BANDS = [("Critical (9.0-10.0)", "9-10"), ("High (7.0-8.9)", "7-8.9"),
-             ("Medium (4.0-6.9)", "4-6.9"), ("Low (0.1-3.9)", "0.1-3.9")]
-VPR_ALL = "0.1-10"
+# VPR (Vulnerability Priority Rating) bands, mapped to the equivalent CVSS
+# criticality level. The By-VPR matrix reclassifies the SAME criticality levels
+# the user selected, but through the VPR score instead of the CVSS severity --
+# so a selected level maps to its VPR band and the matrix filters purely on
+# vprScore (no CVSS severity filter). Keyed by severity code (see sc_common).
+# Tuple: (row label, vprScore filter range, numeric low, numeric high).
+VPR_BY_SEV = {
+    CRIT: ("Critical VPR (9.0-10.0)", "9-10",   9.0, 10.0),
+    HIGH: ("High VPR (7.0-8.9)",      "7-8.9",   7.0, 8.9),
+    MED:  ("Medium VPR (4.0-6.9)",    "4-6.9",   4.0, 6.9),
+    LOW:  ("Low VPR (0.1-3.9)",       "0.1-3.9", 0.1, 3.9),
+}
+
+
+def vpr_total_range(sevs):
+    """vprScore range spanning only the selected criticality levels' bands."""
+    bands = [VPR_BY_SEV[s] for s in sevs if s in VPR_BY_SEV]
+    lo = min(b[2] for b in bands)
+    hi = max(b[3] for b in bands)
+    return "%g-%g" % (lo, hi)
 
 # ---------------------------------------------------------------------------
 # Query-name generation. SC names queries per-component; a simple stable
@@ -332,23 +346,26 @@ def build_components(cfg, gf):
                row_labels, RISK_COLUMNS, specs))
 
     # --- 4a. Understanding Risk - By VPR (matrix) --------------------------
-    # Same six columns as By-Severity, but rows are VPR bands (threat-based
-    # priority) instead of the fixed CVSS severity.
-    # Every VPR band is still scoped to the user's tracked severities (same as
-    # By-Severity), otherwise the matrix would count severities the user
-    # excluded.
-    sev_scope = [flt("severity", sev_csv)]
+    # Same six columns as By-Severity, but this reclassifies the SAME
+    # criticality levels the user selected THROUGH the VPR score instead of the
+    # CVSS severity. So it shows one row per SELECTED level (Critical/High/...)
+    # mapped to that level's VPR band, and filters PURELY on vprScore -- it does
+    # NOT also apply the CVSS severity filter (that would combine both scales,
+    # which is not what "risk by VPR" means). Only the selected levels' bands
+    # appear; the total spans just those bands.
     row_labels, specs = [], []
-    for label, vpr in VPR_BANDS:
+    for s in sevs:
+        label, vpr = VPR_BY_SEV[s][0], VPR_BY_SEV[s][1]
         row_labels.append(label)
-        specs.extend(_risk_row_specs(gf, flt("vprScore", vpr), extra=sev_scope))
-    row_labels.append("Total (All VPR)")
-    specs.extend(_risk_row_specs(gf, flt("vprScore", VPR_ALL), extra=sev_scope))
+        specs.extend(_risk_row_specs(gf, flt("vprScore", vpr)))
+    row_labels.append("Total (Selected VPR)")
+    specs.extend(_risk_row_specs(gf, flt("vprScore", vpr_total_range(sevs))))
     add("Understanding Risk - By VPR",
-        "Per-VPR-band risk breakdown (plus a total row): hosts, mitigated vs "
-        "unmitigated findings, exploitable exposure, and long-overdue (>30d "
-        "patchable) exploitable exposure. Rows use the Vulnerability Priority "
-        "Rating (threat-based), not fixed CVSS severity. Scope: %s." % scope,
+        "The tracked criticality levels reclassified by Vulnerability Priority "
+        "Rating (threat-based) instead of CVSS severity: one row per selected "
+        "level mapped to its VPR band, filtered on VPR score alone. Columns: "
+        "hosts, mitigated vs unmitigated findings, exploitable exposure, and "
+        "long-overdue (>30d patchable) exploitable exposure. Scope: %s." % scope,
         "matrix", 2,
         matrix("Understanding Risk - By VPR",
                row_labels, RISK_COLUMNS, specs))

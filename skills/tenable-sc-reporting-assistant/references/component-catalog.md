@@ -31,8 +31,11 @@ helper inside `build_components`, then `write_dashboard(...)`. `col` is 1 or 2
 
 **Row scoping for Understanding-Risk matrices** (`_risk_row_specs(gf, scope_filter, extra=None)`):
 - by **severity** → `scope_filter=flt("severity", code)`, no `extra`.
-- by **VPR band** → `scope_filter=flt("vprScore", band)`, **`extra=[flt("severity", sev_csv)]`** (MUST carry severity — see format ref rule 8).
-- by **asset group** → `scope_filter=flt("assetID", gid)`, optionally `extra` severity.
+- by **VPR** → reclassifies the SELECTED severities through VPR: one row per
+  selected level mapped to its VPR band via `VPR_BY_SEV[s]`,
+  `scope_filter=flt("vprScore", band)`, **NO `extra` / no severity filter**
+  (VPR replaces severity — see format ref rule 8). Total via `vpr_total_range(sevs)`.
+- by **asset group** → `scope_filter=flt("assetID", gid)`, **`extra=[flt("severity", sev_csv)]`** (rows are scopes, so they MUST carry severity).
 - **total row** → same as the others with a CSV of all tracked values.
 
 **Cluster count is handled by `matrix()`** (one per column) — do not touch it.
@@ -72,7 +75,7 @@ A report is `chapters` → `groups` → elements. Build elements, wrap in
 ## Mapping user intent → recipes (freeform mode heuristics)
 
 - "trend / over time / history" → **trend line chart** or **time-window matrix**.
-- "by severity / by VPR / by asset group / breakdown" → **Understanding-Risk matrix**, rows chosen from the phrase (remember the VPR/asset-group severity-scoping rule).
+- "by severity / by VPR / by asset group / breakdown" → **Understanding-Risk matrix**, rows chosen from the phrase (By-VPR = selected levels reclassified via vprScore alone; By-Asset-Group must carry the severity filter — see the row-scoping rules above).
 - "top / worst / most … N" → **top-N table** (`sumremediation` for solutions, `sumip` for hosts, `sumid` for plugins/vulns).
 - "SLA / overdue / within SLA" → SLA matrix (needs `cfg["sla"]`; rows per severity, columns Total/Within/Overdue).
 - "per-host detail / per-vulnerability detail / remediation plan" → report **iterator**.

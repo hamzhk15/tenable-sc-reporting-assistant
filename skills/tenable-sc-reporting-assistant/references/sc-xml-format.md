@@ -165,13 +165,25 @@ patchPublished, vprScore, epssScore, cvssV3BaseScore`.
 `daysMitigated`, `mitigatedStatus`, `vprScore`, `cveID`, `solutionID`.
 Windows are `start:end` in days, e.g. `0:30`, `30:all`.
 
-**Combining band + severity (was a wrong-count bug):** a matrix whose rows are a
-*derived band* (VPR score band, asset group, …) must STILL carry the user's
-tracked-severity filter on every cell — otherwise it counts severities the user
-excluded. By-Severity is inherently scoped (each row *is* a severity); By-VPR /
-By-Asset-Group are not, so pass the severity filter explicitly (`_risk_row_specs`
-`extra=` parameter in both `sc_dashboard.py` and `sc_report.py`). VPR bands stay
-independent of CVSS severity, but each band only counts *within* the selection.
+**Band-matrix scoping — two DIFFERENT rules (both were bugs):**
+
+- **By-Asset-Group** rows are *scopes*, not risk levels, so each cell MUST still
+  carry the tracked-severity filter — otherwise it counts severities the user
+  excluded. Pass it via `_risk_row_specs(..., extra=[flt("severity", sev_csv)])`.
+- **By-VPR** is a *reclassification*, not a scope. It must show the SAME
+  criticality levels the user selected, but read THROUGH the VPR score instead
+  of CVSS severity. So it maps each selected level to its VPR band
+  (Critical→9.0-10, High→7.0-8.9, Medium→4.0-6.9, Low→0.1-3.9), shows only the
+  selected levels' bands, and filters on `vprScore` **ALONE** — do NOT also
+  apply the CVSS `severity` filter. Combining the two scales double-classifies
+  the data and is wrong. Built from the `VPR_BY_SEV` map + `vpr_total_range()`
+  in both `sc_dashboard.py` and `sc_report.py`.
+
+(Earlier this skill wrongly added the severity filter to By-VPR; that made a
+"Low VPR" row appear even when Low severity was deselected, because a
+CVSS-Critical finding can carry a low VPR. The fix: VPR replaces severity here,
+it does not combine with it. By-Severity is inherently scoped — each row *is* a
+severity — and needs neither treatment.)
 
 **Scanning-history specifics:**
 - *Assets scanned* = `sumip` filtered on `pluginID=19506` (Nessus Scan
@@ -207,8 +219,9 @@ independent of CVSS severity, but each band only counts *within* the selection.
 6. Matrix clusters counted by rows not columns → "No Data" widgets
    (dashboard) / `MatrixCluster.strips` NOT NULL error (report).
 7. Report matrix cell using the dashboard cell shape → matrices render empty.
-8. Band matrix (VPR/asset-group) missing the severity filter → counts excluded
-   severities.
+8. By-Asset-Group matrix missing the severity filter → counts excluded
+   severities. (By-VPR is the opposite: it must filter on vprScore ALONE and
+   map selected levels to VPR bands — adding the severity filter double-scales.)
 
 `validate.py` checks 1–3, 5, 6, plus base64/round-trip integrity. Rules 4, 7, 8
 are structural — they can't happen while you build via the tested functions.

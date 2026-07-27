@@ -23,11 +23,25 @@ from xml.sax.saxutils import escape
 # SLAs but didn't override a given severity.
 DEFAULT_SLA = {CRIT: 7, HIGH: 30, MED: 60, LOW: 90}
 
-# VPR (Vulnerability Priority Rating) bands, high->low. Label carries the score
-# range; value is the vprScore filter range. "0.1-10" = all VPR-scored (total).
-VPR_BANDS = [("Critical (9.0-10.0)", "9-10"), ("High (7.0-8.9)", "7-8.9"),
-             ("Medium (4.0-6.9)", "4-6.9"), ("Low (0.1-3.9)", "0.1-3.9")]
-VPR_ALL = "0.1-10"
+# VPR (Vulnerability Priority Rating) bands, mapped to the equivalent CVSS
+# criticality level. The By-VPR matrix reclassifies the SAME criticality levels
+# the user selected, but through the VPR score instead of the CVSS severity, so
+# it filters purely on vprScore (no CVSS severity filter). Keyed by severity
+# code. Tuple: (row label, vprScore filter range, numeric low, numeric high).
+VPR_BY_SEV = {
+    CRIT: ("Critical VPR (9.0-10.0)", "9-10",   9.0, 10.0),
+    HIGH: ("High VPR (7.0-8.9)",      "7-8.9",   7.0, 8.9),
+    MED:  ("Medium VPR (4.0-6.9)",    "4-6.9",   4.0, 6.9),
+    LOW:  ("Low VPR (0.1-3.9)",       "0.1-3.9", 0.1, 3.9),
+}
+
+
+def vpr_total_range(sevs):
+    """vprScore range spanning only the selected criticality levels' bands."""
+    bands = [VPR_BY_SEV[s] for s in sevs if s in VPR_BY_SEV]
+    lo = min(b[2] for b in bands)
+    hi = max(b[3] for b in bands)
+    return "%g-%g" % (lo, hi)
 
 # The six Understanding-Risk columns (shared with the dashboard template).
 RISK_COLUMNS = [
@@ -448,18 +462,17 @@ def build_chapters(cfg, gf):
         sev_specs.extend(_risk_row_specs(gf, flt("severity", s)))
     sev_rows.append("Total (All Tracked)")
     sev_specs.extend(_risk_row_specs(gf, flt("severity", sev_csv)))
-    # By-VPR matrix rows: each VPR band plus a total row. Every band is still
-    # scoped to the tracked severities (same as By-Severity), otherwise the
-    # matrix would count severities the user excluded.
-    sev_scope = [flt("severity", sev_csv)]
+    # By-VPR matrix rows: the SAME criticality levels the user selected,
+    # reclassified THROUGH the VPR score instead of CVSS severity. One row per
+    # selected level mapped to its VPR band, filtered PURELY on vprScore (no
+    # CVSS severity filter -- combining the two scales is not what "risk by VPR"
+    # means). Only the selected levels' bands appear; the total spans just them.
     vpr_rows, vpr_specs = [], []
-    for label, vpr in VPR_BANDS:
-        vpr_rows.append(label)
-        vpr_specs.extend(_risk_row_specs(gf, flt("vprScore", vpr),
-                                         extra=sev_scope))
-    vpr_rows.append("Total (All VPR)")
-    vpr_specs.extend(_risk_row_specs(gf, flt("vprScore", VPR_ALL),
-                                     extra=sev_scope))
+    for s in sevs:
+        vpr_rows.append(VPR_BY_SEV[s][0])
+        vpr_specs.extend(_risk_row_specs(gf, flt("vprScore", VPR_BY_SEV[s][1])))
+    vpr_rows.append("Total (Selected VPR)")
+    vpr_specs.extend(_risk_row_specs(gf, flt("vprScore", vpr_total_range(sevs))))
     chapters.append(chapter("Understanding Risk", [
         group("3.1", [
             paragraph("3.1.1",
@@ -471,10 +484,14 @@ def build_chapters(cfg, gf):
         ]),
         group("3.2", [
             paragraph("3.2.1",
-                "Risk breakdown by Vulnerability Priority Rating (VPR) band. "
-                "VPR is Tenable's threat-based priority score; unlike fixed "
-                "CVSS severity, it reflects current exploitability and threat "
-                "intelligence. Columns match the by-severity view."),
+                "The same tracked criticality levels, reclassified by "
+                "Vulnerability Priority Rating (VPR) instead of CVSS severity. "
+                "Each selected level maps to its VPR band (Critical 9.0-10.0, "
+                "High 7.0-8.9, Medium 4.0-6.9, Low 0.1-3.9) and is filtered on "
+                "VPR score alone. VPR is Tenable's threat-based priority score, "
+                "reflecting current exploitability and threat intelligence, so "
+                "a finding's VPR band can differ from its CVSS severity. "
+                "Columns match the by-severity view."),
             report_matrix("Understanding Risk - By VPR", vpr_rows,
                           RISK_COLUMNS, vpr_specs),
         ]),
