@@ -1,12 +1,23 @@
-# tenable-sc-reporting-assistant
+# tenable-sc-reporting-generator
 
-A **Claude skill** that helps Vulnerability Management (VM) analysts and
-engineers generate importable **Tenable Security Center (Tenable SC /
-SecurityCenter)** XML templates for a **Vulnerability Management and Remediation
-Planning** dashboard and/or report — and optionally upload them to a SC console
-via API keys, talking directly to the SC REST API (no third-party dependencies).
+A **Claude skill** that generates importable **Tenable Security Center (Tenable
+SC / SecurityCenter)** XML for **dashboards, PDF reports, and CSV exports** —
+and optionally uploads them to a SC console via API keys, talking directly to
+the SC REST API (no third-party dependencies).
 
-## What it generates
+It works two ways:
+
+- **Freeform** — describe any dashboard or report you want; the skill maps your
+  request to a catalog of tested components, proposes the layout for approval,
+  and builds it by composing known-good builders (never hand-written XML).
+- **Curated** — a ready-made **Vulnerability Management & Remediation Planning**
+  dashboard/report as a solid starting point.
+
+## What the curated template generates
+
+(Freeform builds arbitrary combinations of the same component types — matrices,
+tables, line/pie charts, iterators, CSV exports — see
+[`references/component-catalog.md`](skills/tenable-sc-reporting-generator/references/component-catalog.md).)
 
 **Dashboard**
 - Vulnerability Trend Over Time (line chart)
@@ -39,10 +50,11 @@ emit the CSV export.
 ## Repository layout
 
 ```
-skills/vm-remediation-planning/
+skills/tenable-sc-reporting-generator/
 ├── SKILL.md                     # skill entry point (interview + workflow)
 ├── references/
 │   ├── config-schema.md         # config.json schema
+│   ├── component-catalog.md     # tested component recipes (freeform mode)
 │   └── sc-xml-format.md         # SC XML format spec & correctness rules
 └── scripts/
     ├── sc_common.py             # byte-accurate PHP (de)serializer + palette
@@ -58,7 +70,7 @@ skills/vm-remediation-planning/
 ## Quick start (standalone, without Claude)
 
 ```bash
-cd skills/vm-remediation-planning/scripts
+cd skills/tenable-sc-reporting-generator/scripts
 
 # (optional) list repository & asset-group IDs from your console to filter by
 export TSC_HOST=sc.example.com TSC_ACCESS_KEY=... TSC_SECRET_KEY=...
@@ -84,11 +96,12 @@ third-party dependencies.
 
 ## Using it as a Claude skill
 
-Copy `skills/vm-remediation-planning/` into your Claude skills directory
+Copy `skills/tenable-sc-reporting-generator/` into your Claude skills directory
 (e.g. `~/.claude/skills/`), or point your project at this repo. Claude will
-invoke it when you ask to build or deploy a Tenable SC VM/remediation dashboard
-or report, run the interview, generate the XML, validate it, and either hand you
-the files or upload them with credentials you provide.
+invoke it when you ask to build or deploy a Tenable SC dashboard or report of
+any kind, map your request to tested components (or run the curated interview),
+generate the XML, validate it, and either hand you the files or upload them with
+credentials you provide.
 
 ## Correctness
 
@@ -96,7 +109,7 @@ SC stores each `<definition>` as base64(PHP-serialized) with UTF-8 **byte**-leng
 prefixes, so these files must be generated, never hand-edited. `validate.py`
 checks base64/round-trip integrity, invisible `fg==bg` colors, missing table
 schedules, `sumip` host-count mistakes, and accidental Info-severity filters.
-See [`references/sc-xml-format.md`](skills/vm-remediation-planning/references/sc-xml-format.md).
+See [`references/sc-xml-format.md`](skills/tenable-sc-reporting-generator/references/sc-xml-format.md).
 
 ## License
 

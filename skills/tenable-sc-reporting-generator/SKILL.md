@@ -1,24 +1,33 @@
 ---
-name: vm-remediation-planning
-description: Generate importable Tenable Security Center (Tenable SC / SecurityCenter) XML for dashboards, PDF reports, and CSV exports, then optionally upload them to a SC console via API keys. Two modes — a curated "Vulnerability Management and Remediation Planning" dashboard/report, and a freeform mode that maps a user's own description to a catalog of known-good components, proposes the layout for approval, and builds it with the same tested builders. Use when a VM analyst or engineer wants to build, customize, or deploy a Tenable SC dashboard or report — vulnerability trend, scanning history, risk by asset group / severity / VPR, SLA compliance, top remediation opportunities, per-host or per-vulnerability remediation plans, or a custom combination. Triggers on: "Tenable SC dashboard", "SecurityCenter report", "vulnerability management dashboard", "remediation planning report", "custom SC dashboard", "import SC template".
+name: tenable-sc-reporting-generator
+description: Generate importable Tenable Security Center (Tenable SC / SecurityCenter) XML for dashboards, PDF reports, and CSV exports, then optionally upload them to a SC console via API keys. Works two ways — a freeform mode that maps any dashboard/report a user describes to a catalog of known-good components, proposes the layout for approval, and builds it with tested builders; and a curated "Vulnerability Management and Remediation Planning" dashboard/report as a ready-made starting point. Use whenever someone wants to build, customize, or deploy a Tenable SC dashboard or report of any kind — vulnerability trend, scanning history, risk by asset group / severity / VPR, SLA compliance, top remediation opportunities, per-host or per-vulnerability breakdowns, custom matrices/tables/charts, or any combination. Triggers on: "Tenable SC dashboard", "SecurityCenter report", "vulnerability management dashboard", "custom SC dashboard", "SC report template", "import SC dashboard/report".
 ---
 
-# Vulnerability Management & Remediation Planning — Tenable SC Template Generator
+# Tenable SC Reporting Generator — dashboards, reports & CSV exports
 
 This skill builds **importable Tenable Security Center XML** — dashboards, PDF
-reports, and CSV exports — and can upload them to a SC console with API keys.
+reports, and CSV exports of essentially any composition — and can upload them to
+a SC console with API keys. It ships a curated Vulnerability Management &
+Remediation Planning template as a ready-made starting point, and a freeform
+mode for building whatever the user describes from a catalog of tested
+components.
 
 ## Two ways to use it
 
-- **Curated mode (default):** the ready-made **Vulnerability Management and
-  Remediation Planning** dashboard/report described under "What it produces".
-  Run the interview, generate, validate, deliver.
-- **Freeform mode:** the user describes a dashboard or report in their own words
-  ("show me exploitable criticals by asset group over 90 days, plus a top-10
-  remediation table and a CSV of everything"). You **map the request to the
-  component catalog** (`references/component-catalog.md`), **propose the
-  component list for the user to confirm**, then build it by composing the same
-  tested builders — never by hand-writing XML. See "Freeform mode" below.
+Pick the mode from what the user asks for:
+
+- **Freeform mode:** the user describes any dashboard or report in their own
+  words ("show me exploitable criticals by asset group over 90 days, plus a
+  top-10 remediation table and a CSV of everything"). You **map the request to
+  the component catalog** (`references/component-catalog.md`), **propose the
+  component list for the user to confirm**, then build it by composing the
+  tested builders — never by hand-writing XML. See "Freeform mode" below. This
+  is the general path: any Tenable SC dashboard/report the catalog's recipes can
+  express.
+- **Curated mode:** the ready-made **Vulnerability Management and Remediation
+  Planning** dashboard/report described under "What it produces" — a good
+  default when the user just wants a solid VM dashboard/report without
+  specifying components. Run the interview, generate, validate, deliver.
 
 Both modes converge on the same pipeline: build via the `sc_dashboard` /
 `sc_report` builders → **always** `validate.py` → deliver or upload. Every
@@ -129,7 +138,7 @@ can pick which IDs to put in `repository_ids` / `asset_group_ids`. In SC, an
 Write the answers to a `config.json` (schema in `references/config-schema.md`), then:
 
 ```bash
-cd skills/vm-remediation-planning/scripts
+cd skills/tenable-sc-reporting-generator/scripts
 python3 generate.py --config /path/to/config.json --out-dir /path/to/output
 ```
 
