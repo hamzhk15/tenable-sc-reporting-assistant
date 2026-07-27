@@ -1,13 +1,29 @@
 ---
 name: vm-remediation-planning
-description: Generate importable Tenable Security Center (Tenable SC / SecurityCenter) XML templates for a "Vulnerability Management and Remediation Planning" dashboard and/or report, then optionally upload them to a SC console via API keys. Use when a VM analyst or engineer wants to build, customize, or deploy a Tenable SC dashboard or report covering vulnerability trend, scanning history, risk by asset group or severity, top remediation opportunities, or detailed per-host / per-remediation remediation plans. Triggers on: "Tenable SC dashboard", "SecurityCenter report", "vulnerability management dashboard", "remediation planning report", "import SC template".
+description: Generate importable Tenable Security Center (Tenable SC / SecurityCenter) XML for dashboards, PDF reports, and CSV exports, then optionally upload them to a SC console via API keys. Two modes — a curated "Vulnerability Management and Remediation Planning" dashboard/report, and a freeform mode that maps a user's own description to a catalog of known-good components, proposes the layout for approval, and builds it with the same tested builders. Use when a VM analyst or engineer wants to build, customize, or deploy a Tenable SC dashboard or report — vulnerability trend, scanning history, risk by asset group / severity / VPR, SLA compliance, top remediation opportunities, per-host or per-vulnerability remediation plans, or a custom combination. Triggers on: "Tenable SC dashboard", "SecurityCenter report", "vulnerability management dashboard", "remediation planning report", "custom SC dashboard", "import SC template".
 ---
 
 # Vulnerability Management & Remediation Planning — Tenable SC Template Generator
 
-This skill builds **importable Tenable Security Center XML** for one template
-family: **Vulnerability Management and Remediation Planning**. It produces a
-dashboard, a report, or both, and can upload them to a SC console with API keys.
+This skill builds **importable Tenable Security Center XML** — dashboards, PDF
+reports, and CSV exports — and can upload them to a SC console with API keys.
+
+## Two ways to use it
+
+- **Curated mode (default):** the ready-made **Vulnerability Management and
+  Remediation Planning** dashboard/report described under "What it produces".
+  Run the interview, generate, validate, deliver.
+- **Freeform mode:** the user describes a dashboard or report in their own words
+  ("show me exploitable criticals by asset group over 90 days, plus a top-10
+  remediation table and a CSV of everything"). You **map the request to the
+  component catalog** (`references/component-catalog.md`), **propose the
+  component list for the user to confirm**, then build it by composing the same
+  tested builders — never by hand-writing XML. See "Freeform mode" below.
+
+Both modes converge on the same pipeline: build via the `sc_dashboard` /
+`sc_report` builders → **always** `validate.py` → deliver or upload. Every
+correctness rule (cluster counts, colors, severity scoping, byte-accurate
+serialization) is enforced there, so both modes inherit the same guarantees.
 
 ## What it produces
 
@@ -161,6 +177,65 @@ an empty or stuck widget, tell them to:
 
 Repeat per affected widget. This does not indicate a bad template — the XML is
 correct; SC just needs the definition re-committed once after import.
+
+## Freeform mode
+
+Use this when the user wants something other than the curated template — a
+custom dashboard or report described in their own words ("give me a dashboard of
+exploitable criticals by asset group over the last 90 days, plus a top-10
+remediation table"). The goal is to satisfy the request **by composing the same
+tested builders** — never by hand-writing XML, which is exactly how every bug in
+`references/sc-xml-format.md` was introduced.
+
+**Step F1 — Elicit the request and the scope.** Get two things:
+- *What* they want to see (the components / questions to answer).
+- The *scope* — the same global filters the curated interview collects:
+  `vuln_data`, `data_freshness`, `severities`, `repository_ids`,
+  `asset_group_ids` (+ real names), and any SLAs. Scope still flows through the
+  global-filter injector `gf` and drives the dashboard scope tag, so collect it
+  even in freeform mode. The "never substitute placeholder IDs" and
+  "asset-group rows show the real name" rules from Step 1 apply unchanged.
+
+**Step F2 — Map the request to the catalog.** Open
+`references/component-catalog.md` and translate each thing the user asked for
+into a catalog recipe using the "Mapping user intent → recipes" heuristics
+(trend → line chart / time-window matrix; by-severity/VPR/asset-group →
+Understanding-Risk matrix; top-N → table; SLA → SLA matrix; per-host /
+per-vuln → report iterator; export → CSV). Carry the row-scoping rules with you
+(VPR / asset-group rows MUST also carry the severity filter).
+
+**Step F3 — Propose the component list and get approval.** Before building,
+present the mapped component list back to the user for confirmation — e.g.:
+
+> I'll build a dashboard with:
+> 1. Understanding Risk – By Asset Group (matrix) — exploitable criticals only
+> 2. Remediation Opportunities (table, top 10)
+>
+> Scope: Active data, 90d, severities Critical+High, asset groups 3/9/14.
+
+Use AskUserQuestion (or plain text) and adjust until they approve. If any request
+maps to **no** catalog recipe, say so plainly: offer the closest recipe, or state
+that a new tested builder must be written and validated first — do **not**
+improvise raw XML to cover the gap.
+
+**Step F4 — Build by composing builders.** Assemble the approved components with
+the `sc_dashboard` / `sc_report` builder functions listed in the catalog
+(`matrix`/`table`/`linechart` + `add` for dashboards; `report_matrix`/
+`table_component`/`iterator` + `chapter`/`group` for reports; `write_csv_report`
+for CSV). Always route each cell's base filters through `gf`. For anything the
+curated pipeline already parameterizes, prefer extending the config over writing
+a one-off — but a bespoke composition in a small driver script is fine as long
+as it only calls tested builders.
+
+**Step F5 — Validate, then deliver or upload.** Exactly as curated mode:
+`validate.py` on every generated file (it enforces the cluster-count, color,
+schedule, Info-severity and host-cell rules), then hand over the XML or
+`upload.py` it. Never deliver a file that fails validation.
+
+The one inviolable rule of freeform mode: **it only ever composes catalog
+recipes / tested builders.** If you catch yourself about to construct a
+`<definition>` by hand, stop — that path reintroduces the byte-prefix, cluster,
+and cell-shape bugs the builders exist to prevent.
 
 ## Critical correctness rules (baked into the scripts — respect them)
 
