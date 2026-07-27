@@ -187,13 +187,16 @@ RISK_COLUMNS = [
 ]
 
 
-def _risk_row_specs(gf, scope_filter):
+def _risk_row_specs(gf, scope_filter, extra=None):
     """Build the 6 Understanding-Risk cells for one row.
 
-    scope_filter is the filter that scopes the row (an asset-group filter or a
-    severity filter), or None for a grand-total row.
+    scope_filter is the filter that scopes the row (an asset-group filter, a
+    severity filter, or a VPR-band filter), or None for a grand-total row.
+    extra is an optional list of additional base filters applied to every cell
+    in the row — e.g. the tracked-severity filter for the By-VPR matrix, so VPR
+    bands still respect the user's severity selection.
     """
-    base = [scope_filter] if scope_filter else []
+    base = ([scope_filter] if scope_filter else []) + list(extra or [])
     expl = base + [flt("exploitAvailable", "true")]
     expl_patch = expl + [flt("patchPublished", "30:all")]
     return [
@@ -331,12 +334,16 @@ def build_components(cfg, gf):
     # --- 4a. Understanding Risk - By VPR (matrix) --------------------------
     # Same six columns as By-Severity, but rows are VPR bands (threat-based
     # priority) instead of the fixed CVSS severity.
+    # Every VPR band is still scoped to the user's tracked severities (same as
+    # By-Severity), otherwise the matrix would count severities the user
+    # excluded.
+    sev_scope = [flt("severity", sev_csv)]
     row_labels, specs = [], []
     for label, vpr in VPR_BANDS:
         row_labels.append(label)
-        specs.extend(_risk_row_specs(gf, flt("vprScore", vpr)))
+        specs.extend(_risk_row_specs(gf, flt("vprScore", vpr), extra=sev_scope))
     row_labels.append("Total (All VPR)")
-    specs.extend(_risk_row_specs(gf, flt("vprScore", VPR_ALL)))
+    specs.extend(_risk_row_specs(gf, flt("vprScore", VPR_ALL), extra=sev_scope))
     add("Understanding Risk - By VPR",
         "Per-VPR-band risk breakdown (plus a total row): hosts, mitigated vs "
         "unmitigated findings, exploitable exposure, and long-overdue (>30d "
