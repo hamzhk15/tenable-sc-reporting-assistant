@@ -220,10 +220,16 @@ def build_components(cfg, gf):
     C = []
     order_by_col = {1: 0, 2: 0}
 
+    # Dashboards have no filter-description paragraph like reports do, so the
+    # applied-scope tag (e.g. "[Active · 90d · AG:3,9,14 · CH]") is suffixed to
+    # every component header as well as the dashboard name.
+    scope_tag = cfg.get("scope_tag", "")
+    tag_suffix = (" %s" % scope_tag) if scope_tag else ""
+
     def add(name, desc, kind, col, defn):
         order_by_col[col] += 1
-        C.append({"name": name, "desc": desc, "kind": kind, "column": col,
-                  "order": order_by_col[col], "definition": defn})
+        C.append({"name": name + tag_suffix, "desc": desc, "kind": kind,
+                  "column": col, "order": order_by_col[col], "definition": defn})
 
     sevs = cfg["severities"]            # list of severity codes, high->low
     scope = cfg["scope_label"]

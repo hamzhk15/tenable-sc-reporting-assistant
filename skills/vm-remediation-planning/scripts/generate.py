@@ -57,6 +57,10 @@ FRESHNESS_WINDOW = {"day": "0:1", "week": "0:7", "month": "0:30",
 FRESHNESS_LABEL = {"day": "Last Day", "week": "Last Week",
                    "month": "Last Month", "quarter": "Last Quarter (90d)",
                    "year": "Last Year (365d)", "all": "All data"}
+# Compact freshness codes for the scope tag baked into dashboard/component names
+# (dashboards, unlike reports, have no place for a filter-description paragraph).
+FRESHNESS_TAG = {"day": "1d", "week": "7d", "month": "30d",
+                 "quarter": "90d", "year": "365d", "all": "AllTime"}
 
 # "All" for a record-count question. SC has no unbounded table, so "all" maps
 # to a large data-point cap while the title reads "All".
@@ -137,6 +141,21 @@ def normalize(raw):
         parts.append("Asset groups %s" % ",".join(cfg["asset_group_ids"]))
     parts.append("Severities " + "/".join(SEV_LABEL[s] for s in cfg["severities"]))
     cfg["scope_label"] = "; ".join(parts)
+
+    # Compact scope tag for names/titles. Reports describe filters in a
+    # paragraph; dashboards cannot, so we suffix the dashboard name and each
+    # component header with a short "[…]" tag, e.g.
+    #   [Active · 90d · AG:3,9,14 · CHM]
+    tag = []
+    tag.append("Active" if cfg["vuln_data"] == "active" else "AllData")
+    tag.append(FRESHNESS_TAG.get(cfg["data_freshness"], "AllTime"))
+    if cfg["repository_ids"]:
+        tag.append("Repo:" + ",".join(cfg["repository_ids"]))
+    if cfg["asset_group_ids"]:
+        tag.append("AG:" + ",".join(cfg["asset_group_ids"]))
+    # Severity initials, high->low: Critical/High/Medium/Low -> CHML
+    tag.append("".join(SEV_LABEL[s][0] for s in cfg["severities"]))
+    cfg["scope_tag"] = "[" + " · ".join(tag) + "]"
     return cfg
 
 
@@ -280,7 +299,8 @@ def generate(cfg, out_dir):
         comps = sc_dashboard.build_components(cfg, gf)
         fname = os.path.join(out_dir, "%s - Dashboard.xml" % prefix)
         sc_dashboard.write_dashboard(
-            fname, "%s: Vulnerability Management & Remediation Planning" % prefix,
+            fname, "%s: Vulnerability Management & Remediation Planning %s"
+            % (prefix, cfg["scope_tag"]),
             "Vulnerability Management and Remediation Planning dashboard. "
             "Scope: %s." % cfg["scope_label"], comps)
         written.append((fname, len(comps), "dashboard"))

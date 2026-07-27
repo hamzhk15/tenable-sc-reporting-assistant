@@ -29,6 +29,12 @@ dashboard, a report, or both, and can upload them to a SC console with API keys.
    Unmitigated / Within SLA / Overdue.
 7. **Understanding Risk – Remediation Opportunities** — table, top 10 solutions.
 
+Reports describe the applied filters in a paragraph, but dashboards have no such
+place — so the dashboard **name and every component header carry a compact scope
+tag**, e.g. `[Active · 90d · AG:3,9,14 · CHML]` (data source · freshness window ·
+repos/asset-groups · severity initials). This makes the active filters legible at
+a glance without opening each widget.
+
 **Report** (`<report>`, type pdf, scVersion 6.6.0): About; Vulnerability
 Overview (trend + severity pie); SLA Compliance (when SLAs are defined);
 Understanding Risk (By-Severity matrix, By-VPR matrix, top remediation
