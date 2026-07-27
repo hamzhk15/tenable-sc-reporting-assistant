@@ -1,5 +1,5 @@
 ---
-name: tenable-sc-reporting-generator
+name: tenable-sc-reporting-assistant
 description: Generate importable Tenable Security Center (Tenable SC / SecurityCenter) XML for dashboards, PDF reports, and CSV exports, then optionally upload them to a SC console via API keys. Works two ways — a freeform mode that maps any dashboard/report a user describes to a catalog of known-good components, proposes the layout for approval, and builds it with tested builders; and a curated "Vulnerability Management and Remediation Planning" dashboard/report as a ready-made starting point. Use whenever someone wants to build, customize, or deploy a Tenable SC dashboard or report of any kind — vulnerability trend, scanning history, risk by asset group / severity / VPR, SLA compliance, top remediation opportunities, per-host or per-vulnerability breakdowns, custom matrices/tables/charts, or any combination. Triggers on: "Tenable SC dashboard", "SecurityCenter report", "vulnerability management dashboard", "custom SC dashboard", "SC report template", "import SC dashboard/report".
 ---
 
@@ -138,7 +138,7 @@ can pick which IDs to put in `repository_ids` / `asset_group_ids`. In SC, an
 Write the answers to a `config.json` (schema in `references/config-schema.md`), then:
 
 ```bash
-cd skills/tenable-sc-reporting-generator/scripts
+cd skills/tenable-sc-reporting-assistant/scripts
 python3 generate.py --config /path/to/config.json --out-dir /path/to/output
 ```
 

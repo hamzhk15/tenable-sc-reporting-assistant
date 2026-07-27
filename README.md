@@ -1,4 +1,4 @@
-# tenable-sc-reporting-generator
+# tenable-sc-reporting-assistant
 
 A **Claude skill** that generates importable **Tenable Security Center (Tenable
 SC / SecurityCenter)** XML for **dashboards, PDF reports, and CSV exports** —
@@ -17,7 +17,7 @@ It works two ways:
 
 (Freeform builds arbitrary combinations of the same component types — matrices,
 tables, line/pie charts, iterators, CSV exports — see
-[`references/component-catalog.md`](skills/tenable-sc-reporting-generator/references/component-catalog.md).)
+[`references/component-catalog.md`](skills/tenable-sc-reporting-assistant/references/component-catalog.md).)
 
 **Dashboard**
 - Vulnerability Trend Over Time (line chart)
@@ -50,7 +50,7 @@ emit the CSV export.
 ## Repository layout
 
 ```
-skills/tenable-sc-reporting-generator/
+skills/tenable-sc-reporting-assistant/
 ├── SKILL.md                     # skill entry point (interview + workflow)
 ├── references/
 │   ├── config-schema.md         # config.json schema
@@ -70,7 +70,7 @@ skills/tenable-sc-reporting-generator/
 ## Quick start (standalone, without Claude)
 
 ```bash
-cd skills/tenable-sc-reporting-generator/scripts
+cd skills/tenable-sc-reporting-assistant/scripts
 
 # (optional) list repository & asset-group IDs from your console to filter by
 export TSC_HOST=sc.example.com TSC_ACCESS_KEY=... TSC_SECRET_KEY=...
@@ -96,7 +96,7 @@ third-party dependencies.
 
 ## Using it as a Claude skill
 
-Copy `skills/tenable-sc-reporting-generator/` into your Claude skills directory
+Copy `skills/tenable-sc-reporting-assistant/` into your Claude skills directory
 (e.g. `~/.claude/skills/`), or point your project at this repo. Claude will
 invoke it when you ask to build or deploy a Tenable SC dashboard or report of
 any kind, map your request to tested components (or run the curated interview),
@@ -109,7 +109,7 @@ SC stores each `<definition>` as base64(PHP-serialized) with UTF-8 **byte**-leng
 prefixes, so these files must be generated, never hand-edited. `validate.py`
 checks base64/round-trip integrity, invisible `fg==bg` colors, missing table
 schedules, `sumip` host-count mistakes, and accidental Info-severity filters.
-See [`references/sc-xml-format.md`](skills/tenable-sc-reporting-generator/references/sc-xml-format.md).
+See [`references/sc-xml-format.md`](skills/tenable-sc-reporting-assistant/references/sc-xml-format.md).
 
 ## License
 
